@@ -31,8 +31,10 @@ class Lane {
 	}
 
 	load() {
+		if ('debug' in options) console.log("loading url", this.url)
 		$.get(this.url, function (result) {
-
+			this.loaded = true
+			if ('debug' in options) console.log("loaded url", this.url)
 		})
 	}
 }
@@ -47,6 +49,7 @@ for (let c = 0; c < jenkinsLaneSpecs.length; c++) {
 		let laneName = jenkinsLaneSpecs[c][d+1]
 		let lane = new Lane(name, laneName)
 		lanes.push(lane)
+		lane.load()
 	}
 }
 

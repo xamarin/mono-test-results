@@ -13,20 +13,19 @@ function splitOne(str:string, demarcate:string) {
 	return [ str.substring(0,index), str.substring(index) ]
 }
 
-// Config
+// Config -- Put debug options (put #! after URL) in options dict
 
 let options = {}
 
 function hashchange() {
 	options = {}
 	let hash = location.hash
-	if (startsWith(hash, "!")) {
-		hash = hash.substring(1)
+	if (startsWith(hash, "#!")) {
+		hash = hash.substring(2)
 		hash.split('&').forEach(function(x) {
-			let args = splitOne(x, '=')
-			options[args[0]] = args[1]
+			let [key, value] = splitOne(x, '=')
+			options[key] = value
 		})
-
 	}
 }
 
