@@ -10,7 +10,7 @@ else
 	JQUERY_URL    = http://code.jquery.com/jquery-$(JQUERY_VERSION).js
 endif
 
-all: js/testresults.js js/react-dom.js js/react.js js/jquery.js
+all: js/testresults.js js/helper.js js/react-dom.js js/react.js js/jquery.js
 
 tsd:
 	tsd init
@@ -28,7 +28,7 @@ js/jquery.js:
 	mkdir -p js
 	curl -L $(JQUERY_URL) > $@
 
-js/testresults.js: ts/testresults.tsx
+js/testresults.js js/helper.js: ts/testresults.tsx ts/helper.ts
 	mkdir -p js
 	tsc -p ts
 

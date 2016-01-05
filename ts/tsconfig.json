@@ -4,6 +4,7 @@
         "outDir": "../js"
     },
     "files": [
-    	"testresults.tsx"
+    	"testresults.tsx",
+    	"helper.ts"
     ]
 }
