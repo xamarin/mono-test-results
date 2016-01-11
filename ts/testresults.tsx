@@ -1,8 +1,9 @@
 /// <reference path="../typings/tsd.d.ts" />
 /// <reference path="./helper.ts" />
 
-// JOBS LIST //
-function jenkinsUrl(lane) {
+// Lanes list
+
+function jenkinsUrl(lane:string) {
 	return "https://jenkins.mono-project.com/job/"+lane+"/api/json"
 }
 
@@ -15,6 +16,7 @@ let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 	["Windows 32-bit", "z/label=w32",                           "w"]
 ]
 
+// Object tracks/downloads one lane's worth of tests
 // TODO:
 // - Fetch jobs list from Lane url
 // - Fetch URL like https://jenkins.mono-project.com/job/test-mono-mainline/label=debian-amd64/3063/artifact/babysitter_report.json_lines
@@ -25,7 +27,7 @@ class Lane {
 	loaded: boolean
 	failed: boolean
 
-	constructor(name: string, laneName:string) {
+	constructor(name:string, laneName:string) {
 		this.name = name
 		this.url = jenkinsUrl(laneName)
 		this.loaded = false
@@ -35,13 +37,15 @@ class Lane {
 		if ('debug' in options) console.log("loading url", this.url)
 		$.get(this.url, function (result) {
 			this.loaded = true
-			if ('debug' in options) console.log("loaded url", this.url)
+			if ('debug' in options) console.log("loaded url", this.url, "result:", result)
 		}).fail(function() {
+            console.log("Failed to load url", this.url);
 			this.failed = true
 		})
 	}
 }
 
+// Construct lanes
 let lanes: Lane[] = []
 
 for (let c = 0; c < jenkinsLaneSpecs.length; c++) {
@@ -58,7 +62,7 @@ for (let c = 0; c < jenkinsLaneSpecs.length; c++) {
 	}
 }
 
-// PRESENTATION //
+// PRESENTATION
 
 let LoadingBox = React.createClass({
   render: function() {
@@ -71,4 +75,17 @@ let LoadingBox = React.createClass({
   }
 })
 
-ReactDOM.render(<LoadingBox />, document.getElementById('content'))
+let needRender = false
+function render() {
+	ReactDOM.render(<LoadingBox />, document.getElementById('content'))
+	needRender = false
+}
+function tryRender() {
+	if (needRender)
+		render()
+}
+function invalidateUi() {
+	needRender = true
+	setTimeout(render, 0)
+}
+render()

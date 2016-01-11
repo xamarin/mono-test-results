@@ -10,27 +10,32 @@ else
 	JQUERY_URL    = http://code.jquery.com/jquery-$(JQUERY_VERSION).js
 endif
 
-all: js/testresults.js js/helper.js js/react-dom.js js/react.js js/jquery.js
+all: install/index.html install/style.css \
+	 install/js/testresults.js install/js/helper.js \
+	 install/js/react-dom.js install/js/react.js install/js/jquery.js
 
 tsd:
 	tsd init
 	tsd install react-global jquery --save
 
-js/react.js:
-	mkdir -p js
+install/index.html install/style.css: static/index.html static/style.css
+	rsync -rhi static/ install/
+
+install/js/react.js:
+	mkdir -p install
 	curl -L $(REACT_URL) > $@
 
-js/react-dom.js:
-	mkdir -p js
+install/js/react-dom.js:
+	mkdir -p install
 	curl -L $(REACT_DOM_URL) > $@
 
-js/jquery.js:
-	mkdir -p js
+install/js/jquery.js:
+	mkdir -p install
 	curl -L $(JQUERY_URL) > $@
 
-js/testresults.js js/helper.js: ts/testresults.tsx ts/helper.ts
-	mkdir -p js
+install/js/testresults.js install/js/helper.js: ts/testresults.tsx ts/helper.ts
+	mkdir -p install/js
 	tsc -p ts
 
 clean:
-	rm -f js/*
+	rm -rf install/*
