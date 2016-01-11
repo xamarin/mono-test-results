@@ -31,16 +31,20 @@ class Lane {
 		this.name = name
 		this.url = jenkinsUrl(laneName)
 		this.loaded = false
+		this.failed = false
 	}
 
 	load() {
-		if ('debug' in options) console.log("loading url", this.url)
+		let self = this
+		if ('debug' in options) console.log("loading url", self.url)
 		$.get(this.url, function (result) {
-			this.loaded = true
-			if ('debug' in options) console.log("loaded url", this.url, "result:", result)
+			self.loaded = true
+			if ('debug' in options) console.log("loaded url", self.url, "result:", result)
+			invalidateUi()
 		}).fail(function() {
-            console.log("Failed to load url", this.url);
-			this.failed = true
+            console.log("Failed to load url", self.url);
+			self.failed = true
+			invalidateUi()
 		})
 	}
 }
@@ -66,17 +70,51 @@ for (let c = 0; c < jenkinsLaneSpecs.length; c++) {
 
 let LoadingBox = React.createClass({
 	render: function() {
-		return (
-			<div className="loadingBox">
-			<p><img className="icon" src="images/loading.gif" /> Loading...</p>
-			</div>
-		)
+		let dirty = false
+		lanes.forEach( function (lane) {
+			if (!(lane.loaded || lane.failed))
+				dirty = true
+		} )
+		if (dirty)
+			return (
+				<div className="loadingBox">
+				<p><img className="icon" src="images/loading.gif" /> Loading...</p>
+				</div>
+			)
+		else
+			return (
+				<div>&nbsp;</div>
+			)
+	}
+})
+
+let ErrorBox = React.createClass({
+	render: function() {
+		let errors = lanes.filter(function(lane) { return lane.failed })
+		if (errors.length) {
+			let errorList = lanes.map(function (lane) {
+				return (
+					<div className="errorItem">
+					<img className="icon" src="images/error.png" title={lane.url} />
+					Failed to load index for lane <strong>{lane.name}</strong>
+					</div>
+				)
+			})
+			return <div className="errorBox">{errorList}</div>
+		}
+		else {
+			return null
+		}
 	}
 })
 
 let needRender = false
 function render() {
-	ReactDOM.render(<LoadingBox />, document.getElementById('content'))
+	ReactDOM.render(<div>
+		<div className="title">Babysitter logs</div>
+		<LoadingBox />
+		<ErrorBox />
+	</div>, document.getElementById('content'))
 	needRender = false
 }
 function tryRender() {
