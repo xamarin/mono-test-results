@@ -19,7 +19,7 @@ tsd:
 	tsd install react-global jquery --save
 
 install/index.html install/style.css: static/index.html static/style.css
-	rsync -rhi static/ install/
+	rsync -urhi --exclude=.DS_Store static/ install/
 
 install/js/react.js:
 	mkdir -p install

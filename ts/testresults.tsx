@@ -65,14 +65,13 @@ for (let c = 0; c < jenkinsLaneSpecs.length; c++) {
 // PRESENTATION
 
 let LoadingBox = React.createClass({
-  render: function() {
-    return (
-      <div className="loadingBox">
-        <p>Loading...</p>
-        <p>(Except not really)</p>
-      </div>
-    )
-  }
+	render: function() {
+		return (
+			<div className="loadingBox">
+			<p><img className="icon" src="images/loading.gif" /> Loading...</p>
+			</div>
+		)
+	}
 })
 
 let needRender = false

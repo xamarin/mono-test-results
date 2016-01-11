@@ -20,3 +20,5 @@ To test:
 # Licensing
 
 The icons currently being used are from [https://www.iconfinder.com/iconsets/32x32-free-design-icons] and under that license if we post this publicly we have to include a link to [http://www.aha-soft.com/].
+
+(The throbber is from http://preloaders.net/ and has no license restrictions.)
