@@ -35,15 +35,15 @@ class Lane {
 	}
 
 	load() {
-		let self = this
-		if ('debug' in options) console.log("loading url", self.url)
-		$.get(this.url, function (result) {
-			self.loaded = true
-			if ('debug' in options) console.log("loaded url", self.url, "result:", result)
+		if ('debug' in options) console.log("lane loading url", this.url)
+		$.get(this.url, result => {
+			this.loaded = true
+			if ('debug' in options) console.log("lane loaded url", this.url, "result:", result)
+
 			invalidateUi()
-		}).fail(function() {
-            console.log("Failed to load url", self.url);
-			self.failed = true
+		}).fail(() => {
+            console.log("Failed to load url for lane", this.url);
+			this.failed = true
 			invalidateUi()
 		})
 	}
@@ -52,12 +52,13 @@ class Lane {
 // Construct lanes
 let lanes: Lane[] = []
 
-for (let c = 0; c < jenkinsLaneSpecs.length; c++) {
+for (let spec of jenkinsLaneSpecs) {
+	// Spec is a triplet of name, normal URL, PR URL
 	for (let d = 0; d < 2; d++) {
-		let name = jenkinsLaneSpecs[c][0]
+		let name = spec[0]
 		if (d)
 			name += " (PR)"
-		let laneName = jenkinsLaneSpecs[c][d+1]
+		let laneName = spec[d+1]
 		if (laneName) {
 			let lane = new Lane(name, laneName)
 			lanes.push(lane)
