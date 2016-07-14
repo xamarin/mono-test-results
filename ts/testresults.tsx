@@ -13,12 +13,16 @@ function jenkinsLaneUrl(lane:string) {
 	return jenkinsBaseUrl(lane) + "/api/json"
 }
 
-function jenkinsBuildUrl(lane:string, id:string) {
+function jenkinsBuildBaseUrl(lane:string, id:string) {
 	return jenkinsBaseUrl(lane) + "/" + id
 }
 
+function jenkinsBuildUrl(lane:string, id:string) {
+	return jenkinsBuildBaseUrl(lane, id) + "/api/json"
+}
+
 function jenkinsBabysitterUrl(lane:string, id:string) {
-	return jenkinsBuildUrl(lane, id) + "/artifact/babysitter_report.json_lines"
+	return jenkinsBuildBaseUrl(lane, id) + "/artifact/babysitter_report.json_lines"
 }
 
 let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
@@ -30,13 +34,22 @@ let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 	["Windows 32-bit", "z/label=w32",                           "w"]
 ]
 
+class Status {
+	loaded: boolean
+	failed: boolean
+
+	constructor() { this.loaded = false; this.failed = false }
+}
+
 class Build {
 	id: string
-	loaded: boolean
+	babysitterStatus: Status
+	metadataStatus: Status
 
 	constructor(id: string) {
 		this.id = id
-		this.loaded = false
+		this.babysitterStatus = new Status()
+		this.metadataStatus = new Status()
 	}
 }
 
@@ -49,23 +62,21 @@ class Lane {
 	name: string  // Human-readable
 	tag: string   // URL component
 	url: string
-	loaded: boolean
-	failed: boolean
+	status: Status
 	builds: Build[]
 
 	constructor(name:string, laneName:string) {
 		this.name = name
 		this.tag = laneName
 		this.url = jenkinsLaneUrl(laneName)
-		this.loaded = false
-		this.failed = false
+		this.status = new Status()
 		this.builds = []
 	}
 
 	load() {
 		if ('debug' in options) console.log("lane loading url", this.url)
 		$.get(this.url, laneResult => {
-			this.loaded = true
+			this.status.loaded = true
 			if ('debug' in options) console.log("lane loaded url", this.url, "result:", laneResult)
 			let queries = 0
 
@@ -73,15 +84,44 @@ class Lane {
 				let build = new Build(buildInfo.number)
 				this.builds.push(build)
 
-				let babysitterUrl = jenkinsBabysitterUrl(this.tag, build.id)
-				if ('debug' in options) console.log("build", build.id, "for lane", this.name, "loading url", babysitterUrl)
+				let fetchData = (tag:string, url:string, status:Status, success:(result:string)=>void) => {
+					let storageKey = "cache!" + build.id + "!" + tag
+					let storageValue = localStorage.getItem(storageKey)
 
-				$.get(babysitterUrl, buildResult => {
-					if ('debug' in options) console.log("build loaded url", babysitterUrl, "result:", buildResult)
+					if (storageValue) {
+						status.loaded = true
+						success(storageValue)
+						return
+					}
 
-				}).fail(() => {
-					console.log("Failed to load url for lane", babysitterUrl);
-				})
+					if ('debug' in options) console.log("build", build.id, "for lane", this.name, "loading", tag, "url", url)
+
+					// Notice this fetches *text*
+					$.get(url, fetchResult => {
+						if ('debug' in options) console.log("build loaded url", url, "result:", fetchResult)
+
+						localStorageSetItem(storageKey, fetchResult)
+						status.loaded = true
+						success(fetchResult)
+					}, "text").fail(() => {
+						console.log("Failed to load url for lane", url);
+
+						status.loaded = true
+						status.failed = true
+					})
+				}
+
+				fetchData("babysitter", jenkinsBabysitterUrl(this.tag, build.id), build.babysitterStatus,
+					(result:String) => {
+						console.log("DELETE THIS-- HAVE BABYSITTER")
+					}
+				)
+
+				fetchData("metadata", jenkinsBuildUrl(this.tag, build.id), build.metadataStatus,
+					(result:String) => {
+						console.log("DELETE THIS-- HAVE API")
+					}
+				)
 
 				queries++
 				if (queries >= max_build_queries)
@@ -91,7 +131,7 @@ class Lane {
 			invalidateUi()
 		}).fail(() => {
             console.log("Failed to load url for lane", this.url);
-			this.failed = true
+			this.status.failed = true
 			invalidateUi()
 		})
 	}
@@ -121,7 +161,7 @@ let LoadingBox = React.createClass({
 	render: function() {
 		let dirty = false
 		lanes.forEach( function (lane) {
-			if (!(lane.loaded || lane.failed))
+			if (!(lane.status.loaded || lane.status.failed))
 				dirty = true
 		} )
 		if (dirty)
@@ -139,7 +179,7 @@ let LoadingBox = React.createClass({
 
 let ErrorBox = React.createClass({
 	render: function() {
-		let errors = lanes.filter(function(lane) { return lane.failed })
+		let errors = lanes.filter(function(lane) { return lane.status.failed })
 		if (errors.length) {
 			let errorList = lanes.map(function (lane) {
 				return (

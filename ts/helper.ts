@@ -31,3 +31,23 @@ function hashchange() {
 
 $(window).on('hashchange', hashchange)
 hashchange()
+
+// Local storage wrappers (keep track of data-in-use)
+
+function localStorageSetItem(key:string, value:string) {
+	localStorage.setItem("testresults!" + key, value)
+
+	let usageString:string = localStorage.getItem("testresults!usage")
+	let usage = usageString ? +usageString : 0
+	usage += value.length
+	localStorage.setItem("testresults!usage", String(usage))
+}
+
+function localStorageGetItem(key:string) {
+	return localStorage.getItem("testresults!" + key)
+}
+
+function localStorageUsage() {
+	let usageString:string = localStorageGetItem("usage")
+	return +usageString + usageString.length
+}
