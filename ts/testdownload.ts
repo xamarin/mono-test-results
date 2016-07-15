@@ -66,6 +66,11 @@ class BuildBase {
 	interpretMetadata(json) { }
 }
 
+// The type of the class object for a class that inherits from BuildBase
+interface BuildClass<B extends BuildBase> {
+	new(id: string): B
+}
+
 // Represents a lane (a Jenkins "job") and its builds
 // Takes a custom Build class
 // TODO:
@@ -79,11 +84,9 @@ class Lane<B extends BuildBase> {
 	status: Status
 	builds: B[]
 	buildsRemaining: number
+	buildConstructor: BuildClass<B>
 
-	// Note: This is apparently the type and that is terrifying
-	buildConstructor: { new(id: string): B }
-
-	constructor(buildConstructor: { new(id: string): B }, name:string, laneName:string) {
+	constructor(buildConstructor: BuildClass<B>, name:string, laneName:string) {
 		this.name = name
 		this.tag = laneName
 		this.url = jenkinsLaneUrl(laneName)
@@ -168,7 +171,7 @@ class Lane<B extends BuildBase> {
 	}
 }
 
-function makeLanes<B extends BuildBase>(b: { new(id: string): B }) {
+function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 	// Construct lanes
 	let lanes: Lane<B>[] = []
 
