@@ -197,7 +197,7 @@ for (let spec of jenkinsLaneSpecs) {
 
 // PRESENTATION
 
-let loadingIcon = <p><img className="icon" src="images/loading.gif" /> Loading...</p>
+let loadingIcon = <span><img className="icon" src="images/loading.gif" /> Loading...</span>
 
 let LoadingBox = React.createClass({
 	render: function() {
@@ -207,7 +207,7 @@ let LoadingBox = React.createClass({
 				dirty = true
 
 		if (dirty)
-			return <div className="loadingBox">{loadingIcon}</div>
+			return <div className="loadingBox"><p>{loadingIcon}</p></div>
 		else
 			return <div>&nbsp;</div>
 	}
@@ -241,18 +241,18 @@ let ContentArea = React.createClass({
 					null
 				let buildList = readyBuilds.map(build => {
 					if (!build.failed())
-						return <li>Build {build.id}: {build.date.toLocaleString()}, {build.result}</li>
+						return <li key={build.id}>Build {build.id}: {build.date.toLocaleString()}, {build.result}</li>
 					else
-						return <li>Build {build.id}: <i>(Could not load)</i></li>
+						return <li key={build.id}>Build {build.id}: <i>(Could not load)</i></li>
 				})
 
-				return <p className="verboseLane">
+				return <div className="verboseLane" key={lane.tag}>
 					Lane <span className="laneName">{lane.name}</span>
 					<ul>
 						{buildList}
 						{loader}
 					</ul>
-				</p>
+				</div>
 			})
 			return <div className="verboseContentList">
 				{laneDisplay}
