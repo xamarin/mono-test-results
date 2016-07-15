@@ -25,6 +25,10 @@ function jenkinsBabysitterUrl(lane:string, id:string) {
 	return jenkinsBuildBaseUrl(lane, id) + "/artifact/babysitter_report.json_lines"
 }
 
+function jenkinsBabysitterAzureUrl(lane:string, id:string) {
+	return jenkinsBuildBaseUrl(lane, id) + "/Azure/processDownloadRequest" + "/" + lane + "/" + id + "/babysitter_report.json_lines"
+}
+
 let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 	["Linux 64-bit",   "test-mono-mainline/label=debian-amd64", "test-mono-pull-request-amd64"],
 	["Linux 32-bit",   "test-mono-mainline/label=debian-i386",  "test-mono-pull-request-i386"],
@@ -149,7 +153,7 @@ class Lane<B extends BuildBase> {
 					})
 				}
 
-				fetchData("babysitter", jenkinsBabysitterUrl(this.tag, build.id), build.babysitterStatus,
+				fetchData("babysitter", jenkinsBabysitterAzureUrl(this.tag, build.id), build.babysitterStatus,
 					(result:string) => {
 						build.interpretBabysitter(jsonLines(result))
 					}
