@@ -137,6 +137,7 @@ class Lane<B extends BuildBase> {
 					if (storageValue) {
 						status.loaded = true
 						success(storageValue) // Ignore result, value already stored
+						invalidateUi()
 						return
 					}
 
@@ -164,6 +165,7 @@ class Lane<B extends BuildBase> {
 						if (failure()) {
 							status.loaded = true
 							status.failed = true
+							invalidateUi()
 						}
 					})
 				}
@@ -203,6 +205,8 @@ class Lane<B extends BuildBase> {
 									return false // Not really a failure
 								}
 							)
+						} else {
+							this.buildsRemaining-- // Won't be checking for babysitter report. Processing done
 						}
 
 						return build.complete
