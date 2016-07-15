@@ -134,9 +134,11 @@ let ContentArea = React.createClass({
 						let failures = build.failures.map(failure => {
 							let testLine = failure.test ? <div>{failure.test}</div> : null
 							let key = failure.step + "!" + failure.test
-							return <li key={key}>
+							let debugInfo = 'debug' in options ? " ("+build.babysitterSource+")" : null
+							return <li key={key} className="verboseBuild">
 								<div>
 									{failureDescribe(failure.kind)} while running <span className="invocation">{failure.step}</span>
+									{debugInfo}
 								</div>
 								{testLine}
 							</li>

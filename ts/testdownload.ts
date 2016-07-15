@@ -1,6 +1,11 @@
 /// <reference path="../typings/tsd.d.ts" />
 /// <reference path="./helper.ts" />
 
+/*
+ * This file is responsible for downloading data from all lanes, cacheing
+ * successfully downloaded data, and passing results to a Build subclass.
+ */
+
 const max_build_queries = 10
 
 // Lanes list
@@ -21,11 +26,11 @@ function jenkinsBuildUrl(lane:string, id:string) {
 	return jenkinsBuildBaseUrl(lane, id) + "/api/json?tree=actions[individualBlobs[*],parameters[*]],timestamp,result"
 }
 
-function jenkinsBabysitterUrl(lane:string, id:string) {
+function jenkinsBabysitterLegacyUrl(lane:string, id:string) {
 	return jenkinsBuildBaseUrl(lane, id) + "/artifact/babysitter_report.json_lines"
 }
 
-function jenkinsBabysitterAzureUrl(lane:string, id:string) {
+function jenkinsBabysitterUrl(lane:string, id:string) {
 	return jenkinsBuildBaseUrl(lane, id) + "/Azure/processDownloadRequest" + "/" + lane + "/" + id + "/babysitter_report.json_lines"
 }
 
@@ -45,22 +50,26 @@ class Status {
 	constructor() { this.loaded = false; this.failed = false }
 }
 
-// Represent one build+test run within a lane
+// Represent one build+test run within a lane.
+// Subclasses receive server data as parsed JSON and decide what to do with it.
 class BuildBase {
-	id: string
-	babysitterStatus: Status
+	id: string               // Build number
 	metadataStatus: Status
-	displayUrl: string
+	babysitterStatus: Status
+	displayUrl: string       // Link to human-readable info page for build
+	complete: boolean        // If false, build is ongoing
+	babysitterSource: string // If we downloaded the babysitter script, where from?
 
 	constructor(laneTag: string, id: string) {
 		this.id = id
-		this.babysitterStatus = new Status()
 		this.metadataStatus = new Status()
+		this.babysitterStatus = new Status()
 		this.displayUrl = jenkinsBuildBaseUrl(laneTag, id)
 	}
 
-	loaded() {
-		return this.babysitterStatus.loaded && this.metadataStatus.loaded
+	loaded() { // Note: Babysitter load is not attempted unless metadata results say to
+		return this.metadataStatus.loaded &&
+			(this.metadataStatus.failed || !this.complete || this.babysitterStatus.loaded)
 	}
 
 	failed() {
@@ -84,13 +93,13 @@ interface BuildClass<B extends BuildBase> {
 // - Fetch URL like https://jenkins.mono-project.com/job/test-mono-mainline/label=debian-amd64/3063/artifact/babysitter_report.json_lines
 //   from job number
 class Lane<B extends BuildBase> {
-	name: string  // Human-readable
-	tag: string   // URL component
-	displayUrl: string
-	apiUrl: string
+	name: string       // Human-readable
+	tag: string        // URL component
+	displayUrl: string // Link to human-readable info page for build
+	apiUrl: string     // Link to url JSON was loaded from
 	status: Status
 	builds: B[]
-	buildsRemaining: number
+	buildsRemaining: number // Count of builds not yet finished loading
 	buildConstructor: BuildClass<B>
 
 	constructor(buildConstructor: BuildClass<B>, name:string, laneName:string) {
@@ -116,7 +125,12 @@ class Lane<B extends BuildBase> {
 				let build = new this.buildConstructor(this.tag, buildInfo.number)
 				this.builds.push(build)
 
-				let fetchData = (tag:string, url:string, status:Status, success:(result:string)=>void) => {
+				let fetchData = (tag:string,    // Tag for cache
+								 url:string,    // URL to load
+								 status:Status, // Status variable to effect
+								 success:(result:string)=>boolean, // Return true if data good enough to store
+								 failure:()=>boolean = ()=>true    // Return true if failure is "real" (false to recover)
+								) => {
 					let storageKey = "cache!" + build.id + "!" + tag
 					let storageValue = localStorage.getItem(storageKey)
 
@@ -132,36 +146,62 @@ class Lane<B extends BuildBase> {
 					$.get(url, fetchResult => {
 						if ('debug' in options) console.log("build loaded url", url, "result length:", fetchResult.length)
 
+						let mayStore = false
 						status.loaded = true
 						try {
-							success(fetchResult)
+							mayStore = success(fetchResult)
 						} catch (e) {
 							console.log("Failed to interpret result of url:", url, "exception:", e)
 							status.failed = true
 						}
 
 						invalidateUi()
-						if (!status.failed)
+						if (!status.failed && mayStore)
 							localStorageSetItem(storageKey, fetchResult)
 						this.buildsRemaining--
 					}, "text").fail(() => {
 						console.log("Failed to load url for lane", url);
 
-						status.loaded = true
-						status.failed = true
-						this.buildsRemaining--
+						if (failure()) {
+							status.loaded = true
+							status.failed = true
+							this.buildsRemaining--
+						}
 					})
 				}
 
-				fetchData("babysitter", jenkinsBabysitterAzureUrl(this.tag, build.id), build.babysitterStatus,
-					(result:string) => {
-						build.interpretBabysitter(jsonLines(result))
-					}
-				)
-
+				// Fetch metadata
 				fetchData("metadata", jenkinsBuildUrl(this.tag, build.id), build.metadataStatus,
 					(result:string) => {
-						build.interpretMetadata(JSON.parse(result))
+						let json = JSON.parse(result)
+						build.complete = !!json.result
+						build.interpretMetadata(json)
+
+						// If metadata received and build is finished, go on to fetch babysitter report
+						if (build.complete) {
+							fetchData("babysitter", jenkinsBabysitterUrl(this.tag, build.id), build.babysitterStatus,
+								(result:string) => {
+									build.babysitterSource = "Azure"
+									build.interpretBabysitter(jsonLines(result))
+									return true
+								},
+
+								// Babysitter report failed, but don't trust it-- check old URL also
+								() => {
+									fetchData("babysitterLegacy", jenkinsBabysitterLegacyUrl(this.tag, build.id), build.babysitterStatus,
+										(result:string) => {
+											build.babysitterSource = "Jenkins"
+											build.interpretBabysitter(jsonLines(result))
+											return true
+										}
+									)
+
+									return true
+								}
+							)
+						}
+
+						return build.complete
 					}
 				)
 
