@@ -22,3 +22,7 @@ img.icon {
 	font-weight: bold;
 	color:#1F618D;
 }
+
+li.loading {
+	list-style-type: none;
+}

@@ -42,7 +42,7 @@ class Status {
 }
 
 // Represent one build+test run within a lane
-class Build {
+class BuildBase {
 	id: string
 	babysitterStatus: Status
 	metadataStatus: Status
@@ -57,12 +57,32 @@ class Build {
 		return this.babysitterStatus.loaded && this.metadataStatus.loaded
 	}
 
+	failed() {
+		return this.babysitterStatus.failed || this.metadataStatus.failed
+	}
+
+	interpretBabysitter(jsons: any[]) { }
+
+	interpretMetadata(json) { }
+}
+
+// Split this out in case it makes sense to make other classes later that extract different fields
+class Build extends BuildBase {
+	date: Date
+	result: string
+
+	constructor(id: string) {
+		super(id)
+	}
+
 	interpretBabysitter(jsons: any[]) {
 		console.log("Got babysitter", jsons)
 	}
 
 	interpretMetadata(json) {
 		console.log("Got metadata", json)
+		this.date = new Date(+json.timestamp)
+		this.result = json.result ? json.result : "Success"
 	}
 }
 
@@ -216,10 +236,16 @@ let ContentArea = React.createClass({
 		if (readyLanes.length) {
 			let laneDisplay = readyLanes.map(lane => {
 				let readyBuilds = lane.builds.filter(build => build.loaded())
-				let loader = (readyBuilds.length < lane.builds.length) ? <li>{loadingIcon}</li> : null
-				let buildList = readyBuilds.map(build =>
-					<li>Build</li>
-				)
+				let loader = (readyBuilds.length < lane.builds.length) ?
+					<li className="loading">{loadingIcon}</li> :
+					null
+				let buildList = readyBuilds.map(build => {
+					if (!build.failed())
+						return <li>Build {build.id}: {build.date.toLocaleString()}, {build.result}</li>
+					else
+						return <li>Build {build.id}: <i>(Could not load)</i></li>
+				})
+
 				return <p className="verboseLane">
 					Lane <span className="laneName">{lane.name}</span>
 					<ul>
