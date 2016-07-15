@@ -33,7 +33,7 @@ install/js/jquery.js:
 	mkdir -p install
 	curl -L $(JQUERY_URL) > $@
 
-install/js/testresults.js install/js/helper.js: ts/testresults.tsx ts/helper.ts
+install/js/testresults.js install/js/testdownload.js install/js/helper.js: ts/testresults.tsx ts/testdownload.ts 	ts/helper.ts
 	mkdir -p install/js
 	tsc -p ts
 

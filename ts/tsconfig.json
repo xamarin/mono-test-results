@@ -4,7 +4,8 @@
         "outDir": "../install/js"
     },
     "files": [
-    	"testresults.tsx",
-    	"helper.ts"
+    	"helper.ts",
+    	"testdownload.ts",
+    	"testresults.tsx"
     ]
 }
