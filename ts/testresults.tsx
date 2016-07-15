@@ -141,7 +141,7 @@ let ContentArea = React.createClass({
 								{testLine}
 							</li>
 						})
-						let failureDisplay = null
+						let failureDisplay : JSX.Element = null
 
 						if (failures.length)
 							failureDisplay = <ul>{failures}</ul>
