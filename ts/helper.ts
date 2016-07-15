@@ -51,3 +51,11 @@ function localStorageUsage() {
 	let usageString:string = localStorageGetItem("usage")
 	return +usageString + usageString.length
 }
+
+function jsonLines(str:String) : any[] {
+	return str.split("\n").filter(line =>
+		/\S/.test(line)
+	).map(line =>
+		JSON.parse(line)
+	)
+}

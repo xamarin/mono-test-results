@@ -18,7 +18,7 @@ function jenkinsBuildBaseUrl(lane:string, id:string) {
 }
 
 function jenkinsBuildUrl(lane:string, id:string) {
-	return jenkinsBuildBaseUrl(lane, id) + "/api/json"
+	return jenkinsBuildBaseUrl(lane, id) + "/api/json?tree=actions[individualBlobs[*],parameters[*]],timestamp,result"
 }
 
 function jenkinsBabysitterUrl(lane:string, id:string) {
@@ -36,11 +36,12 @@ let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 
 class Status {
 	loaded: boolean
-	failed: boolean
+	failed: boolean // If failed is true loaded should also be true
 
 	constructor() { this.loaded = false; this.failed = false }
 }
 
+// Represent one build+test run within a lane
 class Build {
 	id: string
 	babysitterStatus: Status
@@ -51,9 +52,21 @@ class Build {
 		this.babysitterStatus = new Status()
 		this.metadataStatus = new Status()
 	}
+
+	loaded() {
+		return this.babysitterStatus.loaded && this.metadataStatus.loaded
+	}
+
+	interpretBabysitter(jsons: any[]) {
+		console.log("Got babysitter", jsons)
+	}
+
+	interpretMetadata(json) {
+		console.log("Got metadata", json)
+	}
 }
 
-// Object tracks/downloads one lane's worth of tests
+// Represents a lane (a Jenkins "job") and its builds
 // TODO:
 // - Fetch jobs list from Lane url
 // - Fetch URL like https://jenkins.mono-project.com/job/test-mono-mainline/label=debian-amd64/3063/artifact/babysitter_report.json_lines
@@ -98,11 +111,18 @@ class Lane {
 
 					// Notice this fetches *text*
 					$.get(url, fetchResult => {
-						if ('debug' in options) console.log("build loaded url", url, "result:", fetchResult)
+						if ('debug' in options) console.log("build loaded url", url, "result length:", fetchResult.length)
 
-						localStorageSetItem(storageKey, fetchResult)
 						status.loaded = true
-						success(fetchResult)
+						try {
+							success(fetchResult)
+						} catch (e) {
+							console.log("Failed to interpret result of url:", url, "exception:", e)
+							status.failed = true
+						}
+
+						if (!status.failed)
+							localStorageSetItem(storageKey, fetchResult)
 					}, "text").fail(() => {
 						console.log("Failed to load url for lane", url);
 
@@ -112,14 +132,14 @@ class Lane {
 				}
 
 				fetchData("babysitter", jenkinsBabysitterUrl(this.tag, build.id), build.babysitterStatus,
-					(result:String) => {
-						console.log("DELETE THIS-- HAVE BABYSITTER")
+					(result:string) => {
+						build.interpretBabysitter(jsonLines(result))
 					}
 				)
 
 				fetchData("metadata", jenkinsBuildUrl(this.tag, build.id), build.metadataStatus,
-					(result:String) => {
-						console.log("DELETE THIS-- HAVE API")
+					(result:string) => {
+						build.interpretMetadata(JSON.parse(result))
 					}
 				)
 
@@ -157,41 +177,61 @@ for (let spec of jenkinsLaneSpecs) {
 
 // PRESENTATION
 
+let loadingIcon = <p><img className="icon" src="images/loading.gif" /> Loading...</p>
+
 let LoadingBox = React.createClass({
 	render: function() {
 		let dirty = false
-		lanes.forEach( function (lane) {
+		for (let lane of lanes)
 			if (!(lane.status.loaded || lane.status.failed))
 				dirty = true
-		} )
+
 		if (dirty)
-			return (
-				<div className="loadingBox">
-				<p><img className="icon" src="images/loading.gif" /> Loading...</p>
-				</div>
-			)
+			return <div className="loadingBox">{loadingIcon}</div>
 		else
-			return (
-				<div>&nbsp;</div>
-			)
+			return <div>&nbsp;</div>
 	}
 })
 
 let ErrorBox = React.createClass({
 	render: function() {
-		let errors = lanes.filter(function(lane) { return lane.status.failed })
+		let errors = lanes.filter(lane => lane.status.failed)
 		if (errors.length) {
-			let errorList = lanes.map(function (lane) {
-				return (
-					<div className="errorItem">
+			let errorDisplay = lanes.map(lane =>
+				<div className="errorItem">
 					<img className="icon" src="images/error.png" title={lane.url} />
 					Failed to load index for lane <strong>{lane.name}</strong>
-					</div>
-				)
-			})
-			return <div className="errorBox">{errorList}</div>
+				</div>
+			)
+			return <div className="errorBox">{errorDisplay}</div>
+		} else {
+			return null
 		}
-		else {
+	}
+})
+
+let ContentArea = React.createClass({
+	render: function() {
+		let readyLanes = lanes.filter(lane => lane.status.loaded)
+		if (readyLanes.length) {
+			let laneDisplay = readyLanes.map(lane => {
+				let readyBuilds = lane.builds.filter(build => build.loaded())
+				let loader = (readyBuilds.length < lane.builds.length) ? <li>{loadingIcon}</li> : null
+				let buildList = readyBuilds.map(build =>
+					<li>Build</li>
+				)
+				return <p className="verboseLane">
+					Lane <span className="laneName">{lane.name}</span>
+					<ul>
+						{buildList}
+						{loader}
+					</ul>
+				</p>
+			})
+			return <div className="verboseContentList">
+				{laneDisplay}
+			</div>
+		} else {
 			return null
 		}
 	}
@@ -200,9 +240,11 @@ let ErrorBox = React.createClass({
 let needRender = false
 function render() {
 	ReactDOM.render(<div>
-		<div className="title">Babysitter logs</div>
+		<div className="pageTitle">Babysitter logs</div>
 		<LoadingBox />
 		<ErrorBox />
+		<hr className="sectionDivider" />
+		<ContentArea />
 	</div>, document.getElementById('content'))
 	needRender = false
 }
@@ -212,6 +254,6 @@ function tryRender() {
 }
 function invalidateUi() {
 	needRender = true
-	setTimeout(render, 0)
+	setTimeout(tryRender, 0)
 }
 render()
