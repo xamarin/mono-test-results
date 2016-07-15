@@ -39,8 +39,8 @@ class Build extends BuildBase {
 	result: string
 	failures: Failure[]
 
-	constructor(id: string) {
-		super(id)
+	constructor(laneTag: string, id: string) {
+		super(laneTag, id)
 		this.failures = []
 	}
 
@@ -108,7 +108,7 @@ let ErrorBox = React.createClass({
 		if (errors.length) {
 			let errorDisplay = lanes.map(lane =>
 				<div className="errorItem">
-					<img className="icon" src="images/error.png" title={lane.url} />
+					<img className="icon" src="images/error.png" title={lane.apiUrl} />
 					Failed to load index for lane <strong>{lane.name}</strong>
 				</div>
 			)
@@ -129,6 +129,7 @@ let ContentArea = React.createClass({
 					<li className="loading">{loadingIcon}</li> :
 					null
 				let buildList = readyBuilds.map(build => {
+					let buildLink = <a href={build.displayUrl}>Build {build.id}</a>
 					if (!build.metadataStatus.failed) {
 						let failures = build.failures.map(failure => {
 							let testLine = failure.test ? <div>{failure.test}</div> : null
@@ -147,14 +148,14 @@ let ContentArea = React.createClass({
 						else if (build.babysitterStatus.failed)
 							failureDisplay = <i className="noLoad">(Test data did not load)</i>
 
-						return <li key={build.id}>Build {build.id}: {build.date.toLocaleString()}, {build.result} {failureDisplay}</li>
+						return <li key={build.id}>{buildLink}: {build.date.toLocaleString()}, {build.result} {failureDisplay}</li>
 					} else {
-						return <li key={build.id}>Build {build.id}: <i>(Could not load)</i></li>
+						return <li key={build.id}>{buildLink}: <i>(Could not load)</i></li>
 					}
 				})
 
 				return <div className="verboseLane" key={lane.tag}>
-					Lane <span className="laneName">{lane.name}</span>
+					<a href={lane.displayUrl}>Lane {lane.name}</a>
 					<ul>
 						{buildList}
 						{loader}

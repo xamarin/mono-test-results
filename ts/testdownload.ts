@@ -46,11 +46,13 @@ class BuildBase {
 	id: string
 	babysitterStatus: Status
 	metadataStatus: Status
+	displayUrl: string
 
-	constructor(id: string) {
+	constructor(laneTag: string, id: string) {
 		this.id = id
 		this.babysitterStatus = new Status()
 		this.metadataStatus = new Status()
+		this.displayUrl = jenkinsBuildBaseUrl(laneTag, id)
 	}
 
 	loaded() {
@@ -68,7 +70,7 @@ class BuildBase {
 
 // The type of the class object for a class that inherits from BuildBase
 interface BuildClass<B extends BuildBase> {
-	new(id: string): B
+	new(laneTag: string, id: string): B
 }
 
 // Represents a lane (a Jenkins "job") and its builds
@@ -80,7 +82,8 @@ interface BuildClass<B extends BuildBase> {
 class Lane<B extends BuildBase> {
 	name: string  // Human-readable
 	tag: string   // URL component
-	url: string
+	displayUrl: string
+	apiUrl: string
 	status: Status
 	builds: B[]
 	buildsRemaining: number
@@ -89,7 +92,8 @@ class Lane<B extends BuildBase> {
 	constructor(buildConstructor: BuildClass<B>, name:string, laneName:string) {
 		this.name = name
 		this.tag = laneName
-		this.url = jenkinsLaneUrl(laneName)
+		this.displayUrl = jenkinsBaseUrl(laneName)
+		this.apiUrl = jenkinsLaneUrl(laneName)
 		this.status = new Status()
 		this.builds = []
 		this.buildsRemaining = 0
@@ -97,15 +101,15 @@ class Lane<B extends BuildBase> {
 	}
 
 	load() {
-		if ('debug' in options) console.log("lane loading url", this.url)
-		$.get(this.url, laneResult => {
+		if ('debug' in options) console.log("lane loading url", this.apiUrl)
+		$.get(this.apiUrl, laneResult => {
 			this.status.loaded = true
-			if ('debug' in options) console.log("lane loaded url", this.url, "result:", laneResult)
+			if ('debug' in options) console.log("lane loaded url", this.apiUrl, "result:", laneResult)
 			let queries = 0
 
 			this.buildsRemaining = Math.min(laneResult.builds.length, max_build_queries)
 			for (let buildInfo of laneResult.builds) {
-				let build = new this.buildConstructor(buildInfo.number)
+				let build = new this.buildConstructor(this.tag, buildInfo.number)
 				this.builds.push(build)
 
 				let fetchData = (tag:string, url:string, status:Status, success:(result:string)=>void) => {
@@ -164,7 +168,7 @@ class Lane<B extends BuildBase> {
 
 			invalidateUi()
 		}).fail(() => {
-            console.log("Failed to load url for lane", this.url);
+            console.log("Failed to load url for lane", this.apiUrl);
 			this.status.failed = true
 			invalidateUi()
 		})
