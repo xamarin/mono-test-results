@@ -78,7 +78,7 @@ class Build extends BuildBase {
 		if ('debug' in options) console.log("Got metadata", json)
 
 		this.date = new Date(+json.timestamp)
-		this.result = json.result ? json.result : "?"
+		this.result = json.result ? json.result : "(Unfinished)"
 	}
 }
 
