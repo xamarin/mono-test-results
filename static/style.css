@@ -36,7 +36,16 @@ li.loading {
 	font-family: monospace;
 }
 
-.noLoad {
+.buildResult .noLoad {
 	font-size:80%;
 	color:#AAAAAA;
 }
+
+.failedTestName {
+	font-weight:bold;
+	color:#CC0000;
+}
+
+.datetime {}
+
+.buildResultString {}

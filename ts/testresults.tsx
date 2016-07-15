@@ -132,11 +132,12 @@ let ContentArea = React.createClass({
 					let buildLink = <a href={build.displayUrl}>Build {build.id}</a>
 					if (!build.metadataStatus.failed) {
 						let failures = build.failures.map(failure => {
-							let testLine = failure.test ? <div>{failure.test}</div> : null
+							let testLine = failure.test ? <div className="failedTestName">{failure.test}</div> : null
 							let key = failure.step + "!" + failure.test
 							let debugInfo = 'debug' in options ? " ("+build.babysitterSource+")" : null
-							return <li key={key} className="verboseBuild">
+							return <li key={key} className="verboseBuildFailure">
 								<div>
+									<img className="icon" src="images/error.png" title={lane.apiUrl} />
 									{failureDescribe(failure.kind)} while running <span className="invocation">{failure.step}</span>
 									{debugInfo}
 								</div>
@@ -150,9 +151,16 @@ let ContentArea = React.createClass({
 						else if (build.babysitterStatus.failed)
 							failureDisplay = <i className="noLoad">(Test data did not load)</i>
 
-						return <li key={build.id}>{buildLink}: {build.date.toLocaleString()}, {build.result} {failureDisplay}</li>
+						return <li key={build.id} className="buildResult">
+							{buildLink}:
+							<span className="datetime">{build.date.toLocaleString()}</span>,
+							<span className="buildResultString">{build.result}</span>
+							{failureDisplay}
+						</li>
 					} else {
-						return <li key={build.id}>{buildLink}: <i>(Could not load)</i></li>
+						return <li key={build.id} className="buildResultNoLoad">
+							{buildLink}: <i className="noLoad">(Could not load)</i>
+						</li>
 					}
 				})
 
