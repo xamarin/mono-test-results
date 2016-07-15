@@ -136,7 +136,7 @@ class Lane<B extends BuildBase> {
 
 					if (storageValue) {
 						status.loaded = true
-						success(storageValue)
+						success(storageValue) // Ignore result, value already stored
 						return
 					}
 
@@ -158,14 +158,12 @@ class Lane<B extends BuildBase> {
 						invalidateUi()
 						if (!status.failed && mayStore)
 							localStorageSetItem(storageKey, fetchResult)
-						this.buildsRemaining--
 					}, "text").fail(() => {
 						console.log("Failed to load url for lane", url);
 
 						if (failure()) {
 							status.loaded = true
 							status.failed = true
-							this.buildsRemaining--
 						}
 					})
 				}
@@ -183,6 +181,7 @@ class Lane<B extends BuildBase> {
 								(result:string) => {
 									build.babysitterSource = "Azure"
 									build.interpretBabysitter(jsonLines(result))
+									this.buildsRemaining-- // Got a babysitter report, processing done
 									return true
 								},
 
@@ -192,11 +191,16 @@ class Lane<B extends BuildBase> {
 										(result:string) => {
 											build.babysitterSource = "Jenkins"
 											build.interpretBabysitter(jsonLines(result))
+											this.buildsRemaining-- // Got a babysitter report, processing done
+											return true
+										},
+										() => {
+											this.buildsRemaining-- // Giving up. Processing done
 											return true
 										}
 									)
 
-									return true
+									return false // Not really a failure
 								}
 							)
 						}
