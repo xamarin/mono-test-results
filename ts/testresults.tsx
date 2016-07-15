@@ -2,20 +2,81 @@
 
 // LOAD
 
+enum FailureKind {
+    Unknown,
+    Test,
+    Crash,
+    Hang
+}
+
+function failureDescribe(kind: FailureKind) {
+	switch (kind) {
+		case FailureKind.Test:
+			return "Testcase failure"
+		case FailureKind.Crash:
+			return "Crash"
+		case FailureKind.Hang:
+			return "Hang"
+		default:
+			return "Unknown failure"
+	}
+}
+
+class Failure {
+	step: string
+	test: string
+	kind: FailureKind
+
+	constructor(step:string, test:string = null) {
+		this.step = step
+		this.test = test
+		this.kind = FailureKind.Unknown
+	}
+}
+
 class Build extends BuildBase {
 	date: Date
 	result: string
+	failures: Failure[]
 
 	constructor(id: string) {
 		super(id)
+		this.failures = []
 	}
 
+	// See scripts/ci/babysitter in mono repo for json format
 	interpretBabysitter(jsons: any[]) {
-		console.log("Got babysitter", jsons)
+		if ('debug' in options) console.log("Got babysitter", jsons)
+
+		for (let json of jsons) {
+			if (json.final_code) {
+				let resolved = false
+				if (json.babysitter_protocol) {
+					for(let testName in json.tests) {
+						let failure = new Failure(json.invocation, testName)
+						let test = json.tests[testName]
+						if (test.crash_failures)
+							failure.kind = FailureKind.Crash
+						else if (test.timeout_failures)
+							failure.kind = FailureKind.Hang
+						else if (test.normal_failures)
+							failure.kind = FailureKind.Test
+
+						this.failures.push(failure)
+						resolved = true
+					}
+				}
+				if (!resolved) {
+					let failure = new Failure(json.invocation)
+					this.failures.push(failure)
+				}
+			}
+		}
 	}
 
 	interpretMetadata(json) {
-		console.log("Got metadata", json)
+		if ('debug' in options) console.log("Got metadata", json)
+
 		this.date = new Date(+json.timestamp)
 		this.result = json.result ? json.result : "Success"
 	}
@@ -68,10 +129,17 @@ let ContentArea = React.createClass({
 					<li className="loading">{loadingIcon}</li> :
 					null
 				let buildList = readyBuilds.map(build => {
-					if (!build.failed())
-						return <li key={build.id}>Build {build.id}: {build.date.toLocaleString()}, {build.result}</li>
-					else
+					if (!build.metadataStatus.failed) {
+						let failures = build.failures.map(failure => {
+							let testline = failure.test ? <div>{failure.test}</div> : null
+							return <li><div>{failureDescribe(failure.kind)} while running <span className="invocation">{failure.step}</span>{testline}</div></li>
+						})
+						let failureDisplay = failures ? <ul>{failures}</ul> : null
+
+						return <li key={build.id}>Build {build.id}: {build.date.toLocaleString()}, {build.result}{failureDisplay}</li>
+					} else {
 						return <li key={build.id}>Build {build.id}: <i>(Could not load)</i></li>
+					}
 				})
 
 				return <div className="verboseLane" key={lane.tag}>

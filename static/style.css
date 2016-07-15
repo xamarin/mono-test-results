@@ -26,3 +26,7 @@ img.icon {
 li.loading {
 	list-style-type: none;
 }
+
+invocation {
+	font-family: fixed;
+}
