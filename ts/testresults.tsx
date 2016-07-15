@@ -97,6 +97,7 @@ class Lane {
 	url: string
 	status: Status
 	builds: Build[]
+	buildsRemaining: number
 
 	constructor(name:string, laneName:string) {
 		this.name = name
@@ -104,6 +105,7 @@ class Lane {
 		this.url = jenkinsLaneUrl(laneName)
 		this.status = new Status()
 		this.builds = []
+		this.buildsRemaining = 0
 	}
 
 	load() {
@@ -113,6 +115,7 @@ class Lane {
 			if ('debug' in options) console.log("lane loaded url", this.url, "result:", laneResult)
 			let queries = 0
 
+			this.buildsRemaining = laneResult.builds.length
 			for (let buildInfo of laneResult.builds) {
 				let build = new Build(buildInfo.number)
 				this.builds.push(build)
@@ -141,13 +144,16 @@ class Lane {
 							status.failed = true
 						}
 
+						invalidateUi()
 						if (!status.failed)
 							localStorageSetItem(storageKey, fetchResult)
+						this.buildsRemaining--
 					}, "text").fail(() => {
 						console.log("Failed to load url for lane", url);
 
 						status.loaded = true
 						status.failed = true
+						this.buildsRemaining--
 					})
 				}
 
@@ -203,7 +209,7 @@ let LoadingBox = React.createClass({
 	render: function() {
 		let dirty = false
 		for (let lane of lanes)
-			if (!(lane.status.loaded || lane.status.failed))
+			if (!(lane.status.loaded || lane.buildsRemaining > 0))
 				dirty = true
 
 		if (dirty)
