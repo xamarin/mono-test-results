@@ -78,7 +78,7 @@ class Build extends BuildBase {
 		if ('debug' in options) console.log("Got metadata", json)
 
 		this.date = new Date(+json.timestamp)
-		this.result = json.result ? json.result : "Success"
+		this.result = json.result ? json.result : "?"
 	}
 }
 
@@ -131,12 +131,23 @@ let ContentArea = React.createClass({
 				let buildList = readyBuilds.map(build => {
 					if (!build.metadataStatus.failed) {
 						let failures = build.failures.map(failure => {
-							let testline = failure.test ? <div>{failure.test}</div> : null
-							return <li><div>{failureDescribe(failure.kind)} while running <span className="invocation">{failure.step}</span>{testline}</div></li>
+							let testLine = failure.test ? <div>{failure.test}</div> : null
+							let key = failure.step + "!" + failure.test
+							return <li key={key}>
+								<div>
+									{failureDescribe(failure.kind)} while running <span className="invocation">{failure.step}</span>
+								</div>
+								{testLine}
+							</li>
 						})
-						let failureDisplay = failures ? <ul>{failures}</ul> : null
+						let failureDisplay = null
 
-						return <li key={build.id}>Build {build.id}: {build.date.toLocaleString()}, {build.result}{failureDisplay}</li>
+						if (failures.length)
+							failureDisplay = <ul>{failures}</ul>
+						else if (build.babysitterStatus.failed)
+							failureDisplay = <i className="noLoad">(Test data did not load)</i>
+
+						return <li key={build.id}>Build {build.id}: {build.date.toLocaleString()}, {build.result} {failureDisplay}</li>
 					} else {
 						return <li key={build.id}>Build {build.id}: <i>(Could not load)</i></li>
 					}

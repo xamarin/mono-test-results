@@ -27,6 +27,11 @@ li.loading {
 	list-style-type: none;
 }
 
-invocation {
-	font-family: fixed;
+.invocation {
+	font-family: monospace;
+}
+
+.noLoad {
+	font-size:80%;
+	color:#AAAAAA;
 }
