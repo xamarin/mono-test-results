@@ -59,6 +59,10 @@ li.verboseBuildFailure {
 	color:#CC0000;
 }
 
+.choice {
+	font-weight:bold;
+}
+
 .datetime {}
 
 .buildResultString {}

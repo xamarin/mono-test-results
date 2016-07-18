@@ -85,6 +85,22 @@ class Build extends BuildBase {
 
 let lanes = makeLanes(Build)
 
+// DISPLAY STATE
+
+enum Visibility {
+	Show,
+	Hide
+}
+
+class ChoiceVisibility extends Choice<Visibility> {}
+let prVisible = new Ref(Visibility.Show)
+
+function filterLanes() {
+	return lanes.filter( lane =>
+		(prVisible.value == Visibility.Show || !lane.isPr)
+	)
+}
+
 // PRESENTATION
 
 let loadingIcon = <span><img className="icon" src="images/loading.gif" /> Loading...</span>
@@ -92,7 +108,7 @@ let loadingIcon = <span><img className="icon" src="images/loading.gif" /> Loadin
 let LoadingBox = React.createClass({
 	render: function() {
 		let dirty = false
-		for (let lane of lanes)
+		for (let lane of filterLanes())
 			if (!lane.status.loaded || lane.buildsRemaining > 0)
 				dirty = true
 
@@ -105,7 +121,7 @@ let LoadingBox = React.createClass({
 
 let ErrorBox = React.createClass({
 	render: function() {
-		let errors = lanes.filter(lane => lane.status.failed)
+		let errors = filterLanes().filter(lane => lane.status.failed)
 		if (errors.length) {
 			let errorDisplay = lanes.map(lane =>
 				<div className="errorItem">
@@ -122,7 +138,7 @@ let ErrorBox = React.createClass({
 
 let ContentArea = React.createClass({
 	render: function() {
-		let readyLanes = lanes.filter(lane => lane.status.loaded)
+		let readyLanes = filterLanes().filter(lane => lane.status.loaded)
 		if (readyLanes.length) {
 			let laneDisplay = readyLanes.map(lane => {
 				let readyBuilds = lane.builds.filter(build => build.loaded())
@@ -183,8 +199,12 @@ let ContentArea = React.createClass({
 
 let needRender = false
 function render() {
+	console.log("RENDERING")
 	ReactDOM.render(<div>
-		<div className="pageTitle">Babysitter logs</div>
+		<div><span className="pageTitle">Babysitter logs</span>
+			<br />
+			Filters: PRs <ChoiceVisibility enum={Visibility} data={prVisible} value={prVisible.value} />
+		</div>
 		<LoadingBox />
 		<ErrorBox />
 		<hr className="sectionDivider" />

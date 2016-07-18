@@ -13,6 +13,17 @@ function splitOne(str:string, demarcate:string) {
 	return [ str.substring(0,index), str.substring(index) ]
 }
 
+// Typescript ops
+
+function enumStringKeys(e) {
+	return Object.keys(e).filter(key => typeof e[key] === "number")
+}
+
+class Ref<T> {
+	value: T
+	constructor(value: T) { this.value = value }
+}
+
 // Config -- Put debug options (put #! after URL) in options dict
 
 let options = {}
@@ -40,7 +51,7 @@ function localStorageUsageDelta(delta:number) {
 	let usageKey = localStoragePrefix + "usage"
 	let usage = +localStorage.getItem(usageKey)
 	usage += delta
-	localStorage.setItem(usageKey, ""+usage)
+	localStorage.setItem(usageKey, String(usage))
 }
 
 function localStorageSetItem(key:string, value:string) {

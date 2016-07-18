@@ -123,16 +123,18 @@ class Lane<B extends BuildBase> {
 	tag: string        // URL component
 	displayUrl: string // Link to human-readable info page for build
 	apiUrl: string     // Link to url JSON was loaded from
+	isPr: boolean
 	status: Status
 	builds: B[]
 	buildsRemaining: number // Count of builds not yet finished loading
 	buildConstructor: BuildClass<B>
 
-	constructor(buildConstructor: BuildClass<B>, name:string, laneName:string) {
+	constructor(buildConstructor: BuildClass<B>, name:string, laneName:string, isPr:boolean) {
 		this.name = name
 		this.tag = laneName
 		this.displayUrl = jenkinsBaseUrl(laneName)
 		this.apiUrl = jenkinsLaneUrl(laneName)
+		this.isPr = isPr
 		this.status = new Status()
 		this.builds = []
 		this.buildsRemaining = 0
@@ -265,7 +267,7 @@ function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 				name += " (PR)"
 			let laneName = spec[d+1]
 			if (laneName) {
-				let lane = new Lane(b, name, laneName)
+				let lane = new Lane(b, name, laneName, !!d)
 				lanes.push(lane)
 				lane.load()
 			}
