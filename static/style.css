@@ -28,8 +28,20 @@ img.icon {
 
 /* Lane display */
 
+li {
+	margin-top: 3px;
+}
+
 li.loading {
 	list-style-type: none;
+}
+
+li.verboseBuildFailure {
+	list-style-type: none;
+	background: url('images/error.png') no-repeat left top;
+	margin-left:-20px;
+	padding-left: 20px;
+	background-size: 16px 16px;
 }
 
 .invocation {

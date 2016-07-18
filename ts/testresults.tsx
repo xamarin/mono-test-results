@@ -137,7 +137,6 @@ let ContentArea = React.createClass({
 							let debugInfo = 'debug' in options ? " ("+build.babysitterSource+")" : null
 							return <li key={key} className="verboseBuildFailure">
 								<div>
-									<img className="icon" src="images/error.png" title={lane.apiUrl} />
 									{failureDescribe(failure.kind)} while running <span className="invocation">{failure.step}</span>
 									{debugInfo}
 								</div>
