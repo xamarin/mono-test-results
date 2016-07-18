@@ -153,7 +153,7 @@ class Lane<B extends BuildBase> {
 								 failure:()=>boolean = ()=>true    // Return true if failure is "real" (false to recover)
 								) => {
 					let storageKey = cachePrefix + build.id + "!" + tag
-					let storageValue = localStorage.getItem(storageKey)
+					let storageValue = localStorageGetItem(storageKey)
 
 					if (storageValue) {
 						status.loaded = true
