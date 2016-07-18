@@ -130,7 +130,7 @@ let ContentArea = React.createClass({
 					<li className="loading">{loadingIcon}</li> :
 					null
 				let buildList = readyBuilds.map(build => {
-					let buildLink = <a href={build.displayUrl}>Build {build.id}</a>
+					let buildLink = <A href={build.displayUrl}>Build {build.id}</A>
 					if (!build.metadataStatus.failed) {
 						let failures = build.failures.map(failure => {
 							let testLine = failure.test ? <div className="failedTestName">{failure.test}</div> : null
@@ -165,7 +165,7 @@ let ContentArea = React.createClass({
 				})
 
 				return <div className="verboseLane" key={lane.tag}>
-					<a href={lane.displayUrl}>Lane {lane.name}</a>
+					<A href={lane.displayUrl}>Lane {lane.name}</A>
 					<ul>
 						{buildList}
 						{loader}
