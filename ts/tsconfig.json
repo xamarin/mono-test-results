@@ -5,7 +5,8 @@
     },
     "files": [
     	"helper.ts",
-    	"testdownload.ts",
-    	"testresults.tsx"
+    	"helper-react.tsx",
+    	"test-download.ts",
+    	"test-results.tsx"
     ]
 }

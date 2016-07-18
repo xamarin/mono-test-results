@@ -1,4 +1,5 @@
-/// <reference path="./testdownload.ts" />
+/// <reference path="./test-download.ts" />
+/// <reference path="./helper-react.tsx" />
 
 // LOAD
 

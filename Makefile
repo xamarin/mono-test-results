@@ -11,7 +11,8 @@ else
 endif
 
 all: install/index.html install/style.css \
-	 install/js/testresults.js install/js/helper.js \
+	 install/js/test-results.js install/js/test-download.js \
+	 install/js/helper.js install/js/helper-react.js \
 	 install/js/react-dom.js install/js/react.js install/js/jquery.js
 
 tsd:
@@ -33,7 +34,7 @@ install/js/jquery.js:
 	mkdir -p install
 	curl -L $(JQUERY_URL) > $@
 
-install/js/testresults.js install/js/testdownload.js install/js/helper.js: ts/testresults.tsx ts/testdownload.ts 	ts/helper.ts
+install/js/test-results.js install/js/test-download.js install/js/helper.js install/js/helper-react.js: ts/test-results.tsx ts/test-download.ts ts/helper.ts ts/helper-react.tsx
 	mkdir -p install/js
 	tsc -p ts
 

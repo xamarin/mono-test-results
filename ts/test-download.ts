@@ -61,8 +61,10 @@ let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 	["Linux ARM64",     "test-mono-mainline-linux/label=debian-8-arm64",    "test-mono-pull-request-arm64"],
 	["Linux ARM32-hf",  "test-mono-mainline-linux/label=debian-8-armhf",    "test-mono-pull-request-armhf"],
 	["Linux ARM32-el",  "test-mono-mainline-linux/label=debian-8-armel",    "test-mono-pull-request-armel"],
-	["Windows Intel32", "z/label=w32",                                      "w"],
-	["Windows Intel64", "z/label=w64",                                      "x"]
+
+    // Windows builds do not currently run babysitter script.
+//	["Windows Intel32", "z/label=w32",                                      "w"],
+//	["Windows Intel64", "z/label=w64",                                      "x"]
 ]
 
 // Download support
