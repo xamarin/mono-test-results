@@ -32,24 +32,35 @@ function hashchange() {
 $(window).on('hashchange', hashchange)
 hashchange()
 
-// Local storage wrappers (keep track of data-in-use)
+// Local storage wrappers: enforce key prefix, keep track of data-in-use
+
+const localStoragePrefix = "testresults!"
+
+function localStorageUsageDelta(delta:number) {
+	let usageKey = localStoragePrefix + "usage"
+	let usage = +localStorage.getItem(usageKey)
+	usage += delta
+	localStorage.setItem(usageKey, ""+usage)
+}
 
 function localStorageSetItem(key:string, value:string) {
-	localStorage.setItem("testresults!" + key, value)
+	let fullKey = localStoragePrefix + key
+	let previous = localStorage.getItem(fullKey)
 
-	let usageString:string = localStorage.getItem("testresults!usage")
-	let usage = usageString ? +usageString : 0
-	usage += value.length
-	localStorage.setItem("testresults!usage", String(usage))
+	localStorage.setItem(fullKey, value)
+
+	localStorageUsageDelta(value.length +
+		(previous == null ? key.length : -previous.length))
 }
 
 function localStorageGetItem(key:string) {
-	return localStorage.getItem("testresults!" + key)
+	return localStorage.getItem(localStoragePrefix + key)
 }
 
 function localStorageUsage() {
-	let usageString:string = localStorageGetItem("usage")
-	return +usageString + usageString.length
+	let usageKey = localStoragePrefix + "usage"
+	let usage = localStorage.getItem(usageKey)
+	return +usage + (usage != null ? usageKey.length + usage.length : 0)
 }
 
 function jsonLines(str:String) : any[] {
@@ -58,4 +69,23 @@ function jsonLines(str:String) : any[] {
 	).map(line =>
 		JSON.parse(line)
 	)
+}
+
+// Delete anything from local storage whose key begins with our prefix plus an additional prefix
+function localStorageClear(prefix:string = "") {
+	let fullPrefix = localStoragePrefix + prefix
+	let doomed = []
+	for (let i = 0; i < localStorage.length; i++) {
+    	let key = localStorage.key(i)
+    	if (startsWith(key, fullPrefix))
+    		doomed.push(key)
+	}
+	for (let key of doomed) {
+		if (prefix) { // When deleting everything, don't bother adjusting usage
+			let previous = localStorage.getItem(key)
+			if (previous != null)
+				localStorageUsageDelta(-key.length - previous.length)
+		}
+		localStorage.removeItem(key)
+	}
 }

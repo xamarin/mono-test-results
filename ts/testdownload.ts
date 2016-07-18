@@ -6,7 +6,26 @@
  * successfully downloaded data, and passing results to a Build subclass.
  */
 
-const max_build_queries = 10
+declare var LZMA:any
+
+const maxBuildQueries = 10
+const cachePrefix = "cache!"
+
+const localStorageVersion = "0"
+const localStorageCompressMode = "none"
+
+// Startup
+
+if (localStorageGetItem("version") != localStorageVersion) {
+	console.log("First boot with this version, clearing localStorage")
+	localStorageClear()
+	localStorageSetItem("version", localStorageVersion)
+	localStorageSetItem("compressMode", localStorageCompressMode)
+} else if (localStorageGetItem("compressMode") != localStorageCompressMode) {
+	console.log("First boot with this compression mode, clearing cache")
+	localStorageClear(cachePrefix)
+	localStorageSetItem("compressMode", localStorageCompressMode)
+}
 
 // Lanes list
 
@@ -42,6 +61,8 @@ let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 	["Linux ARM",      "test-mono-mainline/label=debian-armhf", "test-mono-pull-request-armhf"],
 	["Windows 32-bit", "z/label=w32",                           "w"]
 ]
+
+// Download support
 
 class Status {
 	loaded: boolean
@@ -120,7 +141,7 @@ class Lane<B extends BuildBase> {
 			if ('debug' in options) console.log("lane loaded url", this.apiUrl, "result:", laneResult)
 			let queries = 0
 
-			this.buildsRemaining = Math.min(laneResult.builds.length, max_build_queries)
+			this.buildsRemaining = Math.min(laneResult.builds.length, maxBuildQueries)
 			for (let buildInfo of laneResult.builds) {
 				let build = new this.buildConstructor(this.tag, buildInfo.number)
 				this.builds.push(build)
@@ -131,7 +152,7 @@ class Lane<B extends BuildBase> {
 								 success:(result:string)=>boolean, // Return true if data good enough to store
 								 failure:()=>boolean = ()=>true    // Return true if failure is "real" (false to recover)
 								) => {
-					let storageKey = "cache!" + build.id + "!" + tag
+					let storageKey = cachePrefix + build.id + "!" + tag
 					let storageValue = localStorage.getItem(storageKey)
 
 					if (storageValue) {
@@ -214,7 +235,7 @@ class Lane<B extends BuildBase> {
 				)
 
 				queries++
-				if (queries >= max_build_queries)
+				if (queries >= maxBuildQueries)
 					break
 			}
 
