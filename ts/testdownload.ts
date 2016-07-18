@@ -54,12 +54,15 @@ function jenkinsBabysitterUrl(lane:string, id:string) {
 }
 
 let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
-	["Linux 64-bit",   "test-mono-mainline/label=debian-amd64", "test-mono-pull-request-amd64"],
-	["Linux 32-bit",   "test-mono-mainline/label=debian-i386",  "test-mono-pull-request-i386"],
-	["Mac 32-bit",     "test-mono-mainline/label=osx-i386",     null],
-	["Android",        "test-mono-mainline/label=debian-armel", "test-mono-pull-request-armel"],
-	["Linux ARM",      "test-mono-mainline/label=debian-armhf", "test-mono-pull-request-armhf"],
-	["Windows 32-bit", "z/label=w32",                           "w"]
+	["Mac Intel64",     "test-mono-mainline/label=osx-amd64",               "test-mono-pull-request-amd64-osx"],
+	["Mac Intel32",     "test-mono-mainline/label=osx-i386",                "test-mono-pull-request-i386-osx"],
+	["Linux Intel64",   "test-mono-mainline-linux/label=ubuntu-1404-amd64", "test-mono-pull-request-amd64"],
+	["Linux Intel32",   "test-mono-mainline-linux/label=ubuntu-1404-i386",  "test-mono-pull-request-i386"],
+	["Linux ARM64",     "test-mono-mainline-linux/label=debian-8-arm64",    "test-mono-pull-request-arm64"],
+	["Linux ARM32-hf",  "test-mono-mainline-linux/label=debian-8-armhf",    "test-mono-pull-request-armhf"],
+	["Linux ARM32-el",  "test-mono-mainline-linux/label=debian-8-armel",    "test-mono-pull-request-armel"],
+	["Windows Intel32", "z/label=w32",                                      "w"],
+	["Windows Intel64", "z/label=w64",                                      "x"]
 ]
 
 // Download support
