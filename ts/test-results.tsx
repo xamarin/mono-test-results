@@ -293,10 +293,17 @@ let ContentArea = React.createClass({
 								buildListing.failedLanes++
 
 							dateRange.add(build.date)
+							buildListing.dateRange.add(build.date)
 							buildListing.lanes[lane.idx] = build
 						}
 					}
-					let buildDisplay = Object.keys(buildListings).sort(numericSort).map(buildKey => {
+					let buildDisplay = Object.keys(buildListings).sort(
+							(a,b) => { // Sort by date
+								let ad = buildListings[a].dateRange.late
+								let bd = buildListings[b].dateRange.late
+								return ((+bd) - (+ad))
+							}
+						).map(buildKey => {
 						let buildListing = buildListings[buildKey]
 						let laneDisplay = Object.keys(buildListing.lanes).sort(numericSort).map(laneIdx => {
 							let build = buildListing.lanes[laneIdx]
