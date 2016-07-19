@@ -19,9 +19,38 @@ function enumStringKeys(e) {
 	return Object.keys(e).filter(key => typeof e[key] === "number")
 }
 
+// Use to pass an argument into a function "by reference"
 class Ref<T> {
 	value: T
 	constructor(value: T) { this.value = value }
+}
+
+// Dictionary helpers
+
+function getOrDefault<V>(dict: {[idx:string]:V}, key:string, build: () => V) {
+	let result = dict[key]
+	if (!result) {
+		result = build()
+		dict[key] = result
+	}
+	return result
+}
+
+// Duplicate because of weird edge case in Typescript type rules
+function getIdxOrDefault<V>(dict: {[idx:number]:V}, key:number, build: () => V) {
+	let result = dict[key]
+	if (!result) {
+		result = build()
+		dict[key] = result
+	}
+	return result
+}
+
+function countKeys(dict: any) {
+	let result = 0
+	for (let _ of Object.keys(dict))
+		result++
+	return result
 }
 
 // Config -- Put debug options (put #! after URL) in options dict

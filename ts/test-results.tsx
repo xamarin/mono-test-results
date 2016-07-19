@@ -35,7 +35,7 @@ class Failure {
 	}
 
 	key() : string {
-		return this.test ? this.test : this.step
+		return this.step + (this.test ? this.test : "")
 	}
 }
 
@@ -132,25 +132,6 @@ class DateRange {
 	}
 }
 
-function getOrDefault<V>(dict: {[idx:string]:V}, key:string, build: () => V) {
-	let result = dict[key]
-	if (!result) {
-		result = build()
-		dict[key] = result
-	}
-	return result
-}
-
-// Duplicate because of weird edge case in Typescript type rules
-function getIdxOrDefault<V>(dict: {[idx:number]:V}, key:number, build: () => V) {
-	let result = dict[key]
-	if (!result) {
-		result = build()
-		dict[key] = result
-	}
-	return result
-}
-
 // Listing containers
 
 class Listing {
@@ -172,24 +153,10 @@ class BuildListing extends Listing {
 	}
 }
 
-class FailureBuildListing {
-	lanes: { [laneIndex:number]: boolean } // global lanes array index -> count
-
-	constructor() {
-		this.lanes = {}
-	}
-
-	count() {
-		let result = 0
-		for (let _ of Object.keys(this.lanes))
-			result++
-		return result
-	}
-}
-
 class FailureListing extends Listing {
 	count: number
-	builds: { [id:string]: FailureBuildListing } // build ID to object
+	builds: { [id:string]: boolean }
+	lanes: { [laneIndex:number]: boolean }
 	obj: Failure
 
 	constructor(obj: Failure) {
@@ -197,6 +164,7 @@ class FailureListing extends Listing {
 		this.obj = obj
 		this.count = 0
 		this.builds = {}
+		this.lanes = {}
 	}
 }
 
@@ -327,17 +295,15 @@ let ContentArea = React.createClass({
 
 					for (let lane of readyLanes) {
 						for (let build of lane.builds) {
-							let buildKey = build.id
 							builds++
 
 							for (let failure of build.failures) {
 								let failureKey = failure.key()
 								let failureListing = getOrDefault(failureListings, failureKey,
 									() => new FailureListing(failure))
-								let failureBuildListing = getOrDefault(failureListing.builds, buildKey,
-									() => new FailureBuildListing())
 								failureListing.count++
-								failureBuildListing.lanes[lane.idx] = true
+								failureListing.lanes[lane.idx] = true
+								failureListing.builds[build.id] = true
 							}
 						}
 					}
@@ -346,19 +312,25 @@ let ContentArea = React.createClass({
 						.map( key => {
 							let failureListing = failureListings[key]
 							let failure = failureListing.obj
-							let title = failure.test ? failure.test : "UNKNOWN"
+							let title = failure.test ?
+								<div>
+										<div className="failedTestName">{failure.test}</div>
+										while running <span className="invocation">{failure.step}</span>
+								</div> :
+								<div className="invocation">{failure.step}</div>
 
 							return <li className="failure" key={key}>
-								<div className="failedTestName">{title}</div>
-								while running <span className="invocation">{failure.step}</span>
-								<br />
-								Failed {failureListing.count} times
+								{title}
+								<b>{failureListing.count}</b> failure{failureListing.count>1?"s":""},
 							</li>
 						})
 
-					return <ul className="failureList">
-						{failureDisplay}
-					</ul>
+					return <div>
+						Out of {builds} runs:
+						<ul className="failureList">
+							{failureDisplay}
+						</ul>
+					</div>
 				}
 			}
 		} else {
