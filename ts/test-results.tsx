@@ -125,6 +125,8 @@ class DateRange {
 	late:Date
 
 	add(date: Date) {
+		if (!date)
+			return
 		if (!this.early || date < this.early)
 			this.early = date
 		if (!this.late || date > this.late)
@@ -214,11 +216,32 @@ function renderFailure(failure: Failure) {
 	</li>
 }
 
+function renderFailures(build: Build, buildLink: JSX.Element) {
+	if (!build.metadataStatus.failed) {
+		let failures = build.failures.map(renderFailure)
+		let failureDisplay : JSX.Element = null
+
+		if (failures.length)
+			failureDisplay = <ul>{failures}</ul>
+		else if (build.babysitterStatus.failed)
+			failureDisplay = <i className="noLoad">(Test data did not load)</i>
+
+		return <li key={build.id} className="buildResult">
+			{buildLink} {formatDate(build.date)},{" "}
+			<span className="buildResultString">{build.result}</span>
+			{failureDisplay}
+		</li>
+	} else {
+		return <li key={build.id} className="buildResultNoLoad">
+			{buildLink}: <i className="noLoad">(Could not load)</i>
+		</li>
+	}
+}
+
 let ContentArea = React.createClass({
 	render: function() {
 		let readyLanes = filterLanes().filter(lane => lane.status.loaded)
 		let dateRange = new DateRange()
-		let builds = 0
 
 		if (readyLanes.length) {
 			// FIXME: Don't do this all in one function...
@@ -233,28 +256,7 @@ let ContentArea = React.createClass({
 							null
 						let buildList = readyBuilds.map(build => {
 							let buildLink = <A href={build.displayUrl}>Build {build.id}</A>
-							if (!build.metadataStatus.failed) {
-								let failures = build.failures.map(renderFailure)
-								let failureDisplay : JSX.Element = null
-
-								if (failures.length)
-									failureDisplay = <ul>{failures}</ul>
-								else if (build.babysitterStatus.failed)
-									failureDisplay = <i className="noLoad">(Test data did not load)</i>
-
-								dateRange.add(build.date)
-
-								return <li key={build.id} className="buildResult">
-									{buildLink}:
-									{formatDate(build.date)},
-									<span className="buildResultString">{build.result}</span>
-									{failureDisplay}
-								</li>
-							} else {
-								return <li key={build.id} className="buildResultNoLoad">
-									{buildLink}: <i className="noLoad">(Could not load)</i>
-								</li>
-							}
+							return renderFailures(build, buildLink)
 						})
 
 						return <div className="verboseLane" key={lane.tag}>
@@ -273,34 +275,64 @@ let ContentArea = React.createClass({
 
 				// List of builds, then lanes under builds, then failures under lanes.
 				case GroupBy.Builds: {
-					let builds: {[key:string] : BuildListing} = {}
+					let buildListings: {[key:string] : BuildListing} = {}
 					for (let lane of readyLanes) {
 						for (let build of lane.builds) {
-							for (let failure of build.failures) {
+							let buildListing = getOrDefault(buildListings, build.id,
+									() => new BuildListing())
 
-							}
+							if (build.failures.length)
+								buildListing.failedLanes++
+
+							dateRange.add(build.date)
+							buildListing.lanes[lane.idx] = build
 						}
 					}
-					//let buildDisplay = builds.map(build => {
-//
-//					})
-//					return <div className="buildList">
-//						{laneDisplay}
-//					</div>
+					let buildDisplay = Object.keys(buildListings).sort(numericSort).map(buildKey => {
+						let buildListing = buildListings[buildKey]
+						let laneDisplay = Object.keys(buildListing.lanes).sort(numericSort).map(laneIdx => {
+							let build = buildListing.lanes[laneIdx]
+							let lane = lanes[laneIdx]
+							let buildLink = <A href={build.displayUrl}>{lane.name}</A>
+							return renderFailures(build, buildLink)
+						})
+
+						return <div className="verboseBuild">
+							<b>Build {buildKey}</b>
+							<ul>
+								{laneDisplay}
+							</ul>
+						</div>
+					})
+
+					let failCount = objectValues(buildListings)
+						.filter(buildListing => buildListing.failedLanes > 0)
+						.length
+
+					return <div className="verboseBuildList">
+						<p>{failCount} of {countKeys(buildListings)} builds have failures:</p>
+						<div className="buildList">
+							{buildDisplay}
+						</div>
+					</div>
 				}
 
 				// List of failures, then builds under failures, then lanes under builds.
 				case GroupBy.Failures: {
 					let failureListings: {[key:string] : FailureListing} = {}
+					let uniqueBuilds: { [id:string]: boolean } = {}
+					let trials = 0
 
 					for (let lane of readyLanes) {
 						for (let build of lane.builds) {
-							builds++
+							trials++
+							uniqueBuilds[build.id] = true
 
 							for (let failure of build.failures) {
 								let failureKey = failure.key()
 								let failureListing = getOrDefault(failureListings, failureKey,
 									() => new FailureListing(failure))
+								failureListing.dateRange.add(build.date)
 								failureListing.count++
 								failureListing.lanes[lane.idx] = true
 								failureListing.builds[build.id] = true
@@ -321,12 +353,14 @@ let ContentArea = React.createClass({
 
 							return <li className="failure" key={key}>
 								{title}
-								<b>{failureListing.count}</b> failure{failureListing.count>1?"s":""},
+								<b>{failureListing.count}</b> failure{failureListing.count>1?"s":""}{" "}
+								(failed on {countKeys(failureListing.builds)}/{countKeys(uniqueBuilds)} builds,{" "}
+								{countKeys(failureListing.lanes)}/{readyLanes.length} lanes)
 							</li>
 						})
 
 					return <div>
-						Out of {builds} runs:
+						<p>Out of {trials} runs:</p>
 						<ul className="failureList">
 							{failureDisplay}
 						</ul>

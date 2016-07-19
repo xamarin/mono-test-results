@@ -27,7 +27,7 @@ class Ref<T> {
 
 // Dictionary helpers
 
-function getOrDefault<V>(dict: {[idx:string]:V}, key:string, build: () => V) {
+function getOrDefault<V>(dict: {[key:string]:V}, key:string, build: () => V) {
 	let result = dict[key]
 	if (!result) {
 		result = build()
@@ -51,6 +51,15 @@ function countKeys(dict: any) {
 	for (let _ of Object.keys(dict))
 		result++
 	return result
+}
+
+function numericSort(a:string, b:string) : number {
+	return (+a) - (+b)
+}
+
+// I guess there's an Object.values in ES7 or something??
+function objectValues<T>(dict: { [key: string] : T}) : T[] {
+	return Object.keys(dict).map(key => dict[key])
 }
 
 // Config -- Put debug options (put #! after URL) in options dict
