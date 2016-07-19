@@ -83,7 +83,11 @@ class Build extends BuildBase {
 		if ('debug' in options) console.log("Got metadata", json)
 
 		this.date = new Date(+json.timestamp)
-		this.result = json.result ? json.result : "(Unfinished)"
+		this.result = json.result
+	}
+
+	resultString() {
+		return this.result ? this.result : "(Unfinished)"
 	}
 }
 
@@ -104,6 +108,7 @@ enum Visibility {
 
 class ChoiceVisibility extends Choice<Visibility> {}
 let prVisible = new Ref(Visibility.Show)
+let unfinishedVisible = new Ref(Visibility.Show)
 
 class ChoiceGroupBy extends Choice<GroupBy> {}
 let groupBy = new Ref(GroupBy.Lanes)
@@ -234,7 +239,7 @@ function renderFailures(build: Build, key, buildLink: JSX.Element) {
 
 		return <li key={key} className="buildResult">
 			{buildLink} {formatDate(build.date)},{" "}
-			<span className="buildResultString">{build.result}</span>
+			<span className="buildResultString">{build.resultString()}</span>
 			{failureDisplay}
 		</li>
 	} else {
@@ -257,6 +262,9 @@ let ContentArea = React.createClass({
 				case GroupBy.Lanes: {
 					let laneDisplay = readyLanes.map(lane => {
 						let readyBuilds = lane.builds.filter(build => build.loaded())
+						if (unfinishedVisible.value == Visibility.Hide)
+							readyBuilds = readyBuilds.filter(build => build.result != null)
+
 						let loader = (readyBuilds.length < lane.builds.length) ?
 							<li className="loading">{loadingIcon}</li> :
 							null
@@ -396,7 +404,10 @@ function render() {
 			<br />
 			Group by: <ChoiceGroupBy enum={GroupBy} data={groupBy} value={groupBy.value} />
 			<br />
-			Filters: PRs <ChoiceVisibility enum={Visibility} data={prVisible} value={prVisible.value} />
+			Filters:
+			PRs <ChoiceVisibility enum={Visibility} data={prVisible} value={prVisible.value} />
+			{" "}|{" "}
+			Unfinished <ChoiceVisibility enum={Visibility} data={unfinishedVisible} value={unfinishedVisible.value} />
 		</div>
 		<LoadingBox />
 		<ErrorBox />
