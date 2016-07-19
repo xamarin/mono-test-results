@@ -157,10 +157,12 @@ class Listing {
 
 class BuildListing extends Listing {
 	failedLanes: number
+	unfinishedLanes: number
 	lanes: { [laneIndex:number]: Build }
 
 	constructor() {
 		super()
+		this.unfinishedLanes = 0
 		this.failedLanes = 0
 		this.lanes = {}
 	}
@@ -299,12 +301,25 @@ let ContentArea = React.createClass({
 
 							if (build.failures.length)
 								buildListing.failedLanes++
+							if (build.result == null)
+								buildListing.unfinishedLanes++
 
 							dateRange.add(build.date)
 							buildListing.dateRange.add(build.date)
 							buildListing.lanes[lane.idx] = build
 						}
 					}
+
+					if (unfinishedVisible.value == Visibility.Hide) {
+						let filteredBuildListings: {[key:string] : BuildListing} = {}
+						for (let key of Object.keys(buildListings)) {
+							let value = buildListings[key]
+							if (value.unfinishedLanes == 0) // TODO: Demand a certain # of lanes
+								filteredBuildListings[key] = value
+						}
+						buildListings = filteredBuildListings
+					}
+
 					let buildDisplay = Object.keys(buildListings).sort(
 							(a,b) => { // Sort by date
 								let ad = buildListings[a].dateRange.late
@@ -348,6 +363,9 @@ let ContentArea = React.createClass({
 
 					for (let lane of readyLanes) {
 						for (let build of lane.builds) {
+							if (build.result == null)
+								continue;
+
 							trials++
 							dateRange.add(build.date)
 							uniqueBuilds[build.id] = true
@@ -399,6 +417,12 @@ let ContentArea = React.createClass({
 
 let needRender = false
 function render() {
+	let unfinishedChoice = groupBy.value != GroupBy.Failures ?
+		<span>{" "}|{" "}
+			Unfinished <ChoiceVisibility enum={Visibility} data={unfinishedVisible} value={unfinishedVisible.value} />
+		</span> :
+		null
+
 	ReactDOM.render(<div>
 		<div><span className="pageTitle">Babysitter logs</span>
 			<br />
@@ -406,8 +430,7 @@ function render() {
 			<br />
 			Filters:
 			PRs <ChoiceVisibility enum={Visibility} data={prVisible} value={prVisible.value} />
-			{" "}|{" "}
-			Unfinished <ChoiceVisibility enum={Visibility} data={unfinishedVisible} value={unfinishedVisible.value} />
+			{unfinishedChoice}
 		</div>
 		<LoadingBox />
 		<ErrorBox />
