@@ -62,6 +62,12 @@ function objectValues<T>(dict: { [key: string] : T}) : T[] {
 	return Object.keys(dict).map(key => dict[key])
 }
 
+// Date ops
+
+function sameDay(a:Date, b:Date) {
+	return a.getFullYear() == a.getFullYear() && a.getMonth() == b.getMonth() && a.getDay() == b.getDay()
+}
+
 // Config -- Put debug options (put #! after URL) in options dict
 
 let options = {}

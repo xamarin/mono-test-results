@@ -63,6 +63,8 @@ li.failure {
 	font-weight:bold;
 }
 
-.datetime {}
+.datetime {
+	font-size: 80%;
+}
 
 .buildResultString {}

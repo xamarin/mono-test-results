@@ -122,7 +122,20 @@ function filterLanes() {
 }
 
 function formatDate(date: Date) {
-	return <span className="datetime">{date.toLocaleString()}</span>
+	let day = null
+	let now = new Date()
+	if (sameDay(now, date)) {
+		day = "Today"
+	} else {
+		let yesterday = new Date(+now - 60*60*24*1000)
+		if (sameDay(yesterday, date))
+			day = "Yesterday"
+	}
+
+	if (day)
+		return <span className="datetime">{day} {date.toLocaleTimeString()}</span>
+	else
+		return <span className="datetime">{date.toLocaleString()}</span>
 }
 
 class DateRange {
