@@ -119,6 +119,7 @@ interface BuildClass<B extends BuildBase> {
 // - Fetch URL like https://jenkins.mono-project.com/job/test-mono-mainline/label=debian-amd64/3063/artifact/babysitter_report.json_lines
 //   from job number
 class Lane<B extends BuildBase> {
+	idx: number        // Index in lanes array
 	name: string       // Human-readable
 	tag: string        // URL component
 	displayUrl: string // Link to human-readable info page for build
@@ -129,7 +130,8 @@ class Lane<B extends BuildBase> {
 	buildsRemaining: number // Count of builds not yet finished loading
 	buildConstructor: BuildClass<B>
 
-	constructor(buildConstructor: BuildClass<B>, name:string, laneName:string, isPr:boolean) {
+	constructor(idx:number, buildConstructor: BuildClass<B>, name:string, laneName:string, isPr:boolean) {
+		this.idx = idx
 		this.name = name
 		this.tag = laneName
 		this.displayUrl = jenkinsBaseUrl(laneName)
@@ -267,7 +269,7 @@ function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 				name += " (PR)"
 			let laneName = spec[d+1]
 			if (laneName) {
-				let lane = new Lane(b, name, laneName, !!d)
+				let lane = new Lane(lanes.length, b, name, laneName, !!d)
 				lanes.push(lane)
 				lane.load()
 			}

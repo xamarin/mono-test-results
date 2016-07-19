@@ -14,7 +14,7 @@ class A extends React.Component<AProps,{}> {
 
 /* FIXME: I'm not sure why "value" had to be passed in explicitly; it ought to
  * be derivable from data, but when I tried that I didn't get rerenders. Maybe
- * I am not using React correctly here. */
+ * I am not using React correctly here. --Andi */
 class ChoiceProps<Key> {
 	enum: any
 	data: Ref<Key>

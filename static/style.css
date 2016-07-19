@@ -37,7 +37,7 @@ li.loading {
 }
 
 /* Image known size is 16px */
-li.verboseBuildFailure {
+li.failure {
 	list-style-type: none;
 	background: url('images/error.png') no-repeat left top;
 	margin-left:-20px;

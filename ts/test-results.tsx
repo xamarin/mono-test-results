@@ -1,7 +1,7 @@
 /// <reference path="./test-download.ts" />
 /// <reference path="./helper-react.tsx" />
 
-// LOAD
+// Load
 
 enum FailureKind {
     Unknown,
@@ -32,6 +32,10 @@ class Failure {
 		this.step = step
 		this.test = test
 		this.kind = FailureKind.Unknown
+	}
+
+	key() : string {
+		return this.test ? this.test : this.step
 	}
 }
 
@@ -85,7 +89,13 @@ class Build extends BuildBase {
 
 let lanes = makeLanes(Build)
 
-// DISPLAY STATE
+// Display state
+
+enum GroupBy {
+	Lanes,
+	Builds,
+	Failures,
+}
 
 enum Visibility {
 	Show,
@@ -95,13 +105,102 @@ enum Visibility {
 class ChoiceVisibility extends Choice<Visibility> {}
 let prVisible = new Ref(Visibility.Show)
 
+class ChoiceGroupBy extends Choice<GroupBy> {}
+let groupBy = new Ref(GroupBy.Lanes)
+
+// Utility
+
 function filterLanes() {
 	return lanes.filter( lane =>
 		(prVisible.value == Visibility.Show || !lane.isPr)
 	)
 }
 
-// PRESENTATION
+function formatDate(date: Date) {
+	return <span className="datetime">{date.toLocaleString()}</span>
+}
+
+class DateRange {
+	early:Date
+	late:Date
+
+	add(date: Date) {
+		if (!this.early || date < this.early)
+			this.early = date
+		if (!this.late || date > this.late)
+			this.late = date
+	}
+}
+
+function getOrDefault<V>(dict: {[idx:string]:V}, key:string, build: () => V) {
+	let result = dict[key]
+	if (!result) {
+		result = build()
+		dict[key] = result
+	}
+	return result
+}
+
+// Duplicate because of weird edge case in Typescript type rules
+function getIdxOrDefault<V>(dict: {[idx:number]:V}, key:number, build: () => V) {
+	let result = dict[key]
+	if (!result) {
+		result = build()
+		dict[key] = result
+	}
+	return result
+}
+
+// Listing containers
+
+class Listing {
+	dateRange: DateRange
+
+	constructor() {
+		this.dateRange = new DateRange()
+	}
+}
+
+class BuildListing extends Listing {
+	failedLanes: number
+	lanes: { [laneIndex:number]: Build }
+
+	constructor() {
+		super()
+		this.failedLanes = 0
+		this.lanes = {}
+	}
+}
+
+class FailureBuildListing {
+	lanes: { [laneIndex:number]: boolean } // global lanes array index -> count
+
+	constructor() {
+		this.lanes = {}
+	}
+
+	count() {
+		let result = 0
+		for (let _ of Object.keys(this.lanes))
+			result++
+		return result
+	}
+}
+
+class FailureListing extends Listing {
+	count: number
+	builds: { [id:string]: FailureBuildListing } // build ID to object
+	obj: Failure
+
+	constructor(obj: Failure) {
+		super()
+		this.obj = obj
+		this.count = 0
+		this.builds = {}
+	}
+}
+
+// Presentation
 
 let loadingIcon = <span><img className="icon" src="images/loading.gif" /> Loading...</span>
 
@@ -136,61 +235,132 @@ let ErrorBox = React.createClass({
 	}
 })
 
+function renderFailure(failure: Failure) {
+	let testLine = failure.test ? <div className="failedTestName">{failure.test}</div> : null
+	let key = failure.step + "!" + failure.test
+	return <li key={key} className="failure">
+		<div>
+			{failureDescribe(failure.kind)} while running <span className="invocation">{failure.step}</span>
+		</div>
+		{testLine}
+	</li>
+}
+
 let ContentArea = React.createClass({
 	render: function() {
 		let readyLanes = filterLanes().filter(lane => lane.status.loaded)
+		let dateRange = new DateRange()
+		let builds = 0
+
 		if (readyLanes.length) {
-			let laneDisplay = readyLanes.map(lane => {
-				let readyBuilds = lane.builds.filter(build => build.loaded())
-				let loader = (readyBuilds.length < lane.builds.length) ?
-					<li className="loading">{loadingIcon}</li> :
-					null
-				let buildList = readyBuilds.map(build => {
-					let buildLink = <A href={build.displayUrl}>Build {build.id}</A>
-					if (!build.metadataStatus.failed) {
-						let failures = build.failures.map(failure => {
-							let testLine = failure.test ? <div className="failedTestName">{failure.test}</div> : null
-							let key = failure.step + "!" + failure.test
-							let debugInfo = 'debug' in options ? " ("+build.babysitterSource+")" : null
-							return <li key={key} className="verboseBuildFailure">
-								<div>
-									{failureDescribe(failure.kind)} while running <span className="invocation">{failure.step}</span>
-									{debugInfo}
-								</div>
-								{testLine}
+			// FIXME: Don't do this all in one function...
+			switch (groupBy.value) {
+
+				// List of lanes, then builds under lanes, then failures under builds.
+				case GroupBy.Lanes: {
+					let laneDisplay = readyLanes.map(lane => {
+						let readyBuilds = lane.builds.filter(build => build.loaded())
+						let loader = (readyBuilds.length < lane.builds.length) ?
+							<li className="loading">{loadingIcon}</li> :
+							null
+						let buildList = readyBuilds.map(build => {
+							let buildLink = <A href={build.displayUrl}>Build {build.id}</A>
+							if (!build.metadataStatus.failed) {
+								let failures = build.failures.map(renderFailure)
+								let failureDisplay : JSX.Element = null
+
+								if (failures.length)
+									failureDisplay = <ul>{failures}</ul>
+								else if (build.babysitterStatus.failed)
+									failureDisplay = <i className="noLoad">(Test data did not load)</i>
+
+								dateRange.add(build.date)
+
+								return <li key={build.id} className="buildResult">
+									{buildLink}:
+									{formatDate(build.date)},
+									<span className="buildResultString">{build.result}</span>
+									{failureDisplay}
+								</li>
+							} else {
+								return <li key={build.id} className="buildResultNoLoad">
+									{buildLink}: <i className="noLoad">(Could not load)</i>
+								</li>
+							}
+						})
+
+						return <div className="verboseLane" key={lane.tag}>
+							<A href={lane.displayUrl}>Lane {lane.name}</A>
+							<ul>
+								{buildList}
+								{loader}
+							</ul>
+						</div>
+					})
+
+					return <div className="verboseLaneList">
+						{laneDisplay}
+					</div>
+				}
+
+				// List of builds, then lanes under builds, then failures under lanes.
+				case GroupBy.Builds: {
+					let builds: {[key:string] : BuildListing} = {}
+					for (let lane of readyLanes) {
+						for (let build of lane.builds) {
+							for (let failure of build.failures) {
+
+							}
+						}
+					}
+					//let buildDisplay = builds.map(build => {
+//
+//					})
+//					return <div className="buildList">
+//						{laneDisplay}
+//					</div>
+				}
+
+				// List of failures, then builds under failures, then lanes under builds.
+				case GroupBy.Failures: {
+					let failureListings: {[key:string] : FailureListing} = {}
+
+					for (let lane of readyLanes) {
+						for (let build of lane.builds) {
+							let buildKey = build.id
+							builds++
+
+							for (let failure of build.failures) {
+								let failureKey = failure.key()
+								let failureListing = getOrDefault(failureListings, failureKey,
+									() => new FailureListing(failure))
+								let failureBuildListing = getOrDefault(failureListing.builds, buildKey,
+									() => new FailureBuildListing())
+								failureListing.count++
+								failureBuildListing.lanes[lane.idx] = true
+							}
+						}
+					}
+					let failureDisplay = Object.keys(failureListings)
+						.sort( (a,b) => failureListings[b].count - failureListings[a].count )
+						.map( key => {
+							let failureListing = failureListings[key]
+							let failure = failureListing.obj
+							let title = failure.test ? failure.test : "UNKNOWN"
+
+							return <li className="failure" key={key}>
+								<div className="failedTestName">{title}</div>
+								while running <span className="invocation">{failure.step}</span>
+								<br />
+								Failed {failureListing.count} times
 							</li>
 						})
-						let failureDisplay : JSX.Element = null
 
-						if (failures.length)
-							failureDisplay = <ul>{failures}</ul>
-						else if (build.babysitterStatus.failed)
-							failureDisplay = <i className="noLoad">(Test data did not load)</i>
-
-						return <li key={build.id} className="buildResult">
-							{buildLink}:
-							<span className="datetime">{build.date.toLocaleString()}</span>,
-							<span className="buildResultString">{build.result}</span>
-							{failureDisplay}
-						</li>
-					} else {
-						return <li key={build.id} className="buildResultNoLoad">
-							{buildLink}: <i className="noLoad">(Could not load)</i>
-						</li>
-					}
-				})
-
-				return <div className="verboseLane" key={lane.tag}>
-					<A href={lane.displayUrl}>Lane {lane.name}</A>
-					<ul>
-						{buildList}
-						{loader}
+					return <ul className="failureList">
+						{failureDisplay}
 					</ul>
-				</div>
-			})
-			return <div className="verboseContentList">
-				{laneDisplay}
-			</div>
+				}
+			}
 		} else {
 			return null
 		}
@@ -199,9 +369,10 @@ let ContentArea = React.createClass({
 
 let needRender = false
 function render() {
-	console.log("RENDERING")
 	ReactDOM.render(<div>
 		<div><span className="pageTitle">Babysitter logs</span>
+			<br />
+			Group by: <ChoiceGroupBy enum={GroupBy} data={groupBy} value={groupBy.value} />
 			<br />
 			Filters: PRs <ChoiceVisibility enum={Visibility} data={prVisible} value={prVisible.value} />
 		</div>
