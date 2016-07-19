@@ -134,6 +134,12 @@ class DateRange {
 	}
 }
 
+function formatRange(range: DateRange) {
+	if (!range.early || !range.late)
+		return <i>(Invalid date)</i>
+	return <span className="datetimeRange">{formatDate(range.early)} - {formatDate(range.late)}</span>
+}
+
 // Listing containers
 
 class Listing {
@@ -256,6 +262,7 @@ let ContentArea = React.createClass({
 							null
 						let buildList = readyBuilds.map(build => {
 							let buildLink = <A href={build.displayUrl}>Build {build.id}</A>
+							dateRange.add(build.date) // Side effects in a map? Ew
 							return renderFailures(build, build.id, buildLink)
 						})
 
@@ -269,6 +276,7 @@ let ContentArea = React.createClass({
 					})
 
 					return <div className="verboseLaneList">
+						<p>Showing {formatRange(dateRange)}</p>
 						{laneDisplay}
 					</div>
 				}
@@ -310,7 +318,7 @@ let ContentArea = React.createClass({
 						.length
 
 					return <div className="verboseBuildList">
-						<p>{failCount} of {countKeys(buildListings)} builds have failures:</p>
+						<p>Showing {formatRange(dateRange)} | <b>{failCount} of {countKeys(buildListings)}</b> builds have failures:</p>
 						<div className="buildList">
 							{buildDisplay}
 						</div>
@@ -326,6 +334,7 @@ let ContentArea = React.createClass({
 					for (let lane of readyLanes) {
 						for (let build of lane.builds) {
 							trials++
+							dateRange.add(build.date)
 							uniqueBuilds[build.id] = true
 
 							for (let failure of build.failures) {
@@ -360,7 +369,7 @@ let ContentArea = React.createClass({
 						})
 
 					return <div>
-						<p>Out of {trials} runs:</p>
+						<p>Showing {formatRange(dateRange)} | Out of <b>{trials}</b> runs:</p>
 						<ul className="failureList">
 							{failureDisplay}
 						</ul>
