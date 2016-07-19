@@ -216,7 +216,7 @@ function renderFailure(failure: Failure) {
 	</li>
 }
 
-function renderFailures(build: Build, buildLink: JSX.Element) {
+function renderFailures(build: Build, key, buildLink: JSX.Element) {
 	if (!build.metadataStatus.failed) {
 		let failures = build.failures.map(renderFailure)
 		let failureDisplay : JSX.Element = null
@@ -226,13 +226,13 @@ function renderFailures(build: Build, buildLink: JSX.Element) {
 		else if (build.babysitterStatus.failed)
 			failureDisplay = <i className="noLoad">(Test data did not load)</i>
 
-		return <li key={build.id} className="buildResult">
+		return <li key={key} className="buildResult">
 			{buildLink} {formatDate(build.date)},{" "}
 			<span className="buildResultString">{build.result}</span>
 			{failureDisplay}
 		</li>
 	} else {
-		return <li key={build.id} className="buildResultNoLoad">
+		return <li key={key} className="buildResultNoLoad">
 			{buildLink}: <i className="noLoad">(Could not load)</i>
 		</li>
 	}
@@ -256,7 +256,7 @@ let ContentArea = React.createClass({
 							null
 						let buildList = readyBuilds.map(build => {
 							let buildLink = <A href={build.displayUrl}>Build {build.id}</A>
-							return renderFailures(build, buildLink)
+							return renderFailures(build, build.id, buildLink)
 						})
 
 						return <div className="verboseLane" key={lane.tag}>
@@ -294,10 +294,10 @@ let ContentArea = React.createClass({
 							let build = buildListing.lanes[laneIdx]
 							let lane = lanes[laneIdx]
 							let buildLink = <A href={build.displayUrl}>{lane.name}</A>
-							return renderFailures(build, buildLink)
+							return renderFailures(build, lane.idx, buildLink)
 						})
 
-						return <div className="verboseBuild">
+						return <div className="verboseBuild" key={buildKey}>
 							<b>Build {buildKey}</b>
 							<ul>
 								{laneDisplay}
