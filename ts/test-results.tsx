@@ -87,7 +87,7 @@ class Build extends BuildBase {
 	}
 
 	resultString() {
-		return this.result ? this.result : "(Unfinished)"
+		return this.result ? this.result : "(In progress)"
 	}
 }
 
@@ -108,7 +108,7 @@ enum Visibility {
 
 class ChoiceVisibility extends Choice<Visibility> {}
 let prVisible = new Ref(Visibility.Show)
-let unfinishedVisible = new Ref(Visibility.Show)
+let inProgressVisible = new Ref(Visibility.Show)
 
 class ChoiceGroupBy extends Choice<GroupBy> {}
 let groupBy = new Ref(GroupBy.Lanes)
@@ -170,12 +170,12 @@ class Listing {
 
 class BuildListing extends Listing {
 	failedLanes: number
-	unfinishedLanes: number
+	inProgressLanes: number
 	lanes: { [laneIndex:number]: Build }
 
 	constructor() {
 		super()
-		this.unfinishedLanes = 0
+		this.inProgressLanes = 0
 		this.failedLanes = 0
 		this.lanes = {}
 	}
@@ -277,7 +277,7 @@ let ContentArea = React.createClass({
 				case GroupBy.Lanes: {
 					let laneDisplay = readyLanes.map(lane => {
 						let readyBuilds = lane.builds.filter(build => build.loaded())
-						if (unfinishedVisible.value == Visibility.Hide)
+						if (inProgressVisible.value == Visibility.Hide)
 							readyBuilds = readyBuilds.filter(build => build.result != null)
 
 						let loader = (readyBuilds.length < lane.builds.length) ?
@@ -315,7 +315,7 @@ let ContentArea = React.createClass({
 							if (build.failures.length)
 								buildListing.failedLanes++
 							if (build.result == null)
-								buildListing.unfinishedLanes++
+								buildListing.inProgressLanes++
 
 							dateRange.add(build.date)
 							buildListing.dateRange.add(build.date)
@@ -323,11 +323,11 @@ let ContentArea = React.createClass({
 						}
 					}
 
-					if (unfinishedVisible.value == Visibility.Hide) {
+					if (inProgressVisible.value == Visibility.Hide) {
 						let filteredBuildListings: {[key:string] : BuildListing} = {}
 						for (let key of Object.keys(buildListings)) {
 							let value = buildListings[key]
-							if (value.unfinishedLanes == 0) // TODO: Demand a certain # of lanes
+							if (value.inProgressLanes == 0) // TODO: Demand a certain # of lanes
 								filteredBuildListings[key] = value
 						}
 						buildListings = filteredBuildListings
@@ -430,9 +430,9 @@ let ContentArea = React.createClass({
 
 let needRender = false
 function render() {
-	let unfinishedChoice = groupBy.value != GroupBy.Failures ?
+	let inProgressChoice = groupBy.value != GroupBy.Failures ?
 		<span>{" "}|{" "}
-			Unfinished <ChoiceVisibility enum={Visibility} data={unfinishedVisible} value={unfinishedVisible.value} />
+			In progress <ChoiceVisibility enum={Visibility} data={inProgressVisible} value={inProgressVisible.value} />
 		</span> :
 		null
 
@@ -443,7 +443,7 @@ function render() {
 			<br />
 			Filters:
 			PRs <ChoiceVisibility enum={Visibility} data={prVisible} value={prVisible.value} />
-			{unfinishedChoice}
+			{inProgressChoice}
 		</div>
 		<LoadingBox />
 		<ErrorBox />
