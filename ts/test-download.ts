@@ -13,10 +13,11 @@ const maxCacheSize = 5000000 // Limit 5 MB
 const cachePrefix = "cache!"
 
 const localStorageVersion = "0"
-const localStorageCompressMode = "none+timestamp"
+const localStorageCompressMode = "LZString"
 
 // Types
 
+declare var LZString:any
 declare var PriorityQueue:any
 
 // Cache management
@@ -227,7 +228,7 @@ class Lane<B extends BuildBase> {
 
 					if (storageValue) {
 						status.loaded = true
-						success(storageValue) // Ignore result, value already stored
+						success(LZString.decompress(storageValue)) // Ignore result, value already stored
 						invalidateUi()
 						return
 					}
@@ -249,7 +250,7 @@ class Lane<B extends BuildBase> {
 
 						invalidateUi()
 						if (!status.failed && mayStore)
-							localStorageSetItem(storageKey, fetchResult)
+							localStorageSetItem(storageKey, LZString.compress(fetchResult))
 					}, "text").fail(() => {
 						console.log("Failed to load url for lane", url);
 

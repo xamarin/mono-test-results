@@ -1,5 +1,6 @@
 REACT_VERSION = 0.14.3
 JQUERY_VERSION = 2.1.4
+LZ_VERSION = 1.4.4
 PQ_VERSION = 1.0.0
 ifdef DEBUG
 	REACT_URL     = https://fb.me/react-$(REACT_VERSION).js
@@ -11,13 +12,14 @@ endif
 
 # To avoid having to set up webpack, download all libraries directly and include with <script>.
 JQUERY_URL  = http://code.jquery.com/jquery-$(JQUERY_VERSION).js
+LZ_URL = https://raw.githubusercontent.com/pieroxy/lz-string/$(LZ_VERSION)/libs/lz-string.min.js
 PQ_URL = https://raw.githubusercontent.com/janogonzalez/priorityqueuejs/$(PQ_VERSION)/index.js
 
 all: install/index.html install/style.css \
 	 install/js/test-results.js install/js/test-download.js \
 	 install/js/helper.js install/js/helper-react.js \
 	 install/js/react-dom.js install/js/react.js install/js/jquery.js \
-	 install/js/priorityqueue.js
+	 install/js/lz.js install/js/priorityqueue.js
 
 tsd:
 	tsd init
@@ -37,6 +39,10 @@ install/js/react-dom.js:
 install/js/jquery.js:
 	mkdir -p install/js
 	curl -L $(JQUERY_URL) > $@
+
+install/js/lz.js:
+	mkdir -p install/js
+	curl -L $(LZ_URL) > $@
 
 install/js/priorityqueue.js:
 	mkdir -p install/js

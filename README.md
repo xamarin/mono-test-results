@@ -26,5 +26,6 @@ The throbber is from http://preloaders.net/ and has no license restrictions.
 The Javascript libraries have licenses which mandate attribution:
 
 * JQuery is under the [MIT license](https://github.com/jquery/jquery/blob/master/LICENSE.txt).
-* "priorityqueuejs" is under the [MIT license](https://github.com/janogonzalez/priorityqueuejs)
 * React is under [BSD-3](https://github.com/facebook/react/blob/master/LICENSE).
+* "lz-string" is under the ["WTFPL"](http://pieroxy.net/blog/pages/lz-string/index.html#inline_menu_10).
+* "priorityqueuejs" is under the [MIT license](https://github.com/janogonzalez/priorityqueuejs)
