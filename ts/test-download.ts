@@ -6,13 +6,17 @@
  * successfully downloaded data, and passing results to a Build subclass.
  */
 
-declare var LZMA:any
+// Constants
 
 const maxBuildQueries = 10
 const cachePrefix = "cache!"
 
 const localStorageVersion = "0"
 const localStorageCompressMode = "none"
+
+// Types
+
+declare var PriorityQueue:any
 
 // Startup
 

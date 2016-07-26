@@ -21,4 +21,10 @@ To test:
 
 The icons currently being used are from [https://www.iconfinder.com/iconsets/32x32-free-design-icons] and under that license if we post this publicly we have to include a link to [http://www.aha-soft.com/].
 
-(The throbber is from http://preloaders.net/ and has no license restrictions.)
+The throbber is from http://preloaders.net/ and has no license restrictions.
+
+The Javascript libraries have licenses which mandate attribution:
+
+* JQuery is under the [MIT license](https://github.com/jquery/jquery/blob/master/LICENSE.txt).
+* "priorityqueuejs" is under the [MIT license](https://github.com/janogonzalez/priorityqueuejs)
+* React is under [BSD-3](https://github.com/facebook/react/blob/master/LICENSE).
