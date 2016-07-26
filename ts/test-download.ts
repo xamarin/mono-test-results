@@ -214,6 +214,7 @@ class Lane<B extends BuildBase> {
 			for (let buildInfo of laneResult.builds) {
 				let build = new this.buildConstructor(this.tag, buildInfo.number)
 				this.builds.push(build)
+				let buildTag = build.id + "!" + this.tag
 
 				let fetchData = (tag:string,    // Tag for cache
 								 url:string,    // URL to load
@@ -221,7 +222,7 @@ class Lane<B extends BuildBase> {
 								 success:(result:string)=>boolean, // Return true if data good enough to store
 								 failure:()=>boolean = ()=>true    // Return true if failure is "real" (false to recover)
 								) => {
-					let storageKey = cachePrefix + build.id + "!" + tag
+					let storageKey = cachePrefix + buildTag + "!" + tag
 					let storageValue = localStorageGetItem(storageKey)
 
 					if (storageValue) {
@@ -273,7 +274,7 @@ class Lane<B extends BuildBase> {
 
 							// Manage cache size
 							localStorageWhittle(maxCacheSize - result.length)
-							deletionQueueRegister(timestamp, build.id)
+							deletionQueueRegister(timestamp, buildTag)
 
 							// Fetch babysitter report
 							fetchData("babysitter", jenkinsBabysitterUrl(this.tag, build.id), build.babysitterStatus,

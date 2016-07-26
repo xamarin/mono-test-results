@@ -105,7 +105,7 @@ function localStorageSetItem(key:string, value:string) {
 	localStorage.setItem(fullKey, value)
 
 	localStorageUsageDelta(value.length +
-		(previous == null ? key.length : -previous.length))
+		(previous == null ? fullKey.length : -previous.length))
 }
 
 function localStorageGetItem(key:string) {
