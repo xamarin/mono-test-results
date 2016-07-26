@@ -9,16 +9,17 @@
 // Constants
 
 const maxBuildQueries = 10
+const maxCacheSize = 5000000 // Limit 5 MB
 const cachePrefix = "cache!"
 
 const localStorageVersion = "0"
-const localStorageCompressMode = "none"
+const localStorageCompressMode = "none+timestamp"
 
 // Types
 
 declare var PriorityQueue:any
 
-// Startup
+// Cache management
 
 if (localStorageGetItem("version") != localStorageVersion) {
 	console.log("First boot with this version, clearing localStorage")
@@ -29,6 +30,61 @@ if (localStorageGetItem("version") != localStorageVersion) {
 	console.log("First boot with this compression mode, clearing cache")
 	localStorageClear(cachePrefix)
 	localStorageSetItem("compressMode", localStorageCompressMode)
+}
+
+class DeletionQueueItem {
+	date: number
+	id: string
+
+	constructor(date: number, id: string) {
+		this.date = date
+		this.id = id
+	}
+}
+
+let deletionQueue = new PriorityQueue( (a,b) => b.date - a.date )
+
+function deletionQueueEnq(date:number, id:string) {
+	deletionQueue.enq(new DeletionQueueItem(date, id))
+}
+
+function deletionQueueRegister(date:number, id:string) {
+	localStorageSetItem(cachePrefix + id + "!timestamp", String(date))
+	deletionQueueEnq(date, id)
+}
+
+function localStorageWhittle(downTo: number) {
+	while (localStorageUsage() > downTo) {
+		let target:string
+		try {
+			target = deletionQueue.deq().id
+		} catch (_) { // throws Error on queue empty
+			console.log("Warning: local storage usage exceeds limit, but no clearable data")
+			return
+		}
+
+		localStorageClear(cachePrefix + target)
+
+		// PRs will tend to consist of several builds w/ same ID and timestamp.
+		while((<DeletionQueueItem>deletionQueue.peek()).id == target)
+			deletionQueue.deq()
+
+		console.log("Clearing space in localstorage cache: Forgot build", target, "local storage now", localStorageUsage())
+	}
+}
+
+// Build deletion queue from initial cache contents
+{
+	let isTimestamp = new RegExp(localStoragePrefix + cachePrefix + "(\\d+)!timestamp")
+	for (let i = 0; i < localStorage.length; i++) {
+		let key = localStorage.key(i)
+		let match = isTimestamp.exec(key)
+		if (!match)
+			continue
+		let id = match[1]
+		let date = +localStorage.getItem(key)
+		deletionQueueEnq(date, id)
+	}
 }
 
 // Lanes list
@@ -211,8 +267,15 @@ class Lane<B extends BuildBase> {
 						build.complete = !!json.result
 						build.interpretMetadata(json)
 
-						// If metadata received and build is finished, go on to fetch babysitter report
+						// If metadata received and build is finished,
 						if (build.complete) {
+							let timestamp = json.timestamp
+
+							// Manage cache size
+							localStorageWhittle(maxCacheSize - result.length)
+							deletionQueueRegister(timestamp, build.id)
+
+							// Fetch babysitter report
 							fetchData("babysitter", jenkinsBabysitterUrl(this.tag, build.id), build.babysitterStatus,
 								(result:string) => {
 									build.babysitterSource = "Azure"
