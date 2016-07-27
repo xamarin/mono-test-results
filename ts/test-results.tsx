@@ -258,7 +258,7 @@ let LoadingBox = React.createClass({
 	render: function() {
 		let dirty = false
 		for (let lane of filterLanes())
-			if (!lane.loaded() || lane.buildsRemaining > 0)
+			if (!lane.status.loaded || lane.buildsRemaining > 0)
 				dirty = true
 
 		if (dirty)
@@ -386,12 +386,13 @@ let ContentArea = React.createClass({
 				// List of lanes, then builds under lanes, then failures under builds.
 				case GroupBy.Lanes: {
 					let laneDisplay = readyLanes.map(lane => {
-						let readyBuilds = lane.builds.filter(build => build.loaded() && buildInTimespan(build)).sort(
+						let loadedBuilds = lane.builds.filter(build => build.loaded())
+						let readyBuilds = loadedBuilds.filter(buildInTimespan).sort(
 							(a:Build,b:Build) => (+b.date) - (+a.date))
 						if (inProgressVisible.value == Visibility.Hide)
 							readyBuilds = readyBuilds.filter(build => build.result != null)
 
-						let loader = (readyBuilds.length < lane.builds.length) ?
+						let loader = (loadedBuilds.length < lane.builds.length) ?
 							<li className="loading">{loadingIcon}</li> :
 							null
 						let buildList = readyBuilds.map(build => {

@@ -219,8 +219,10 @@ class Lane<B extends BuildBase> {
 				let fetchData = (tag:string,    // Tag for cache
 								 url:string,    // URL to load
 								 status:Status, // Status variable to effect
-								 success:(result:string)=>boolean, // Return true if data good enough to store
-								 failure:()=>boolean = ()=>true    // Return true if failure is "real" (false to recover)
+								 success:(result:string)=>boolean,     // Return true if data good enough to store
+								 failure:(result)=>boolean = ()=>true  // Return true if failure is "real" (false to recover)
+								                                       // (Note: Failure recovery is no longer used,
+								                                       //        it was originally for checking alternate URLs)
 								) => {
 					let storageKey = cachePrefix + buildTag + "!" + tag
 					let storageValue = localStorageGetItem(storageKey)
@@ -250,11 +252,10 @@ class Lane<B extends BuildBase> {
 						invalidateUi()
 						if (!status.failed && mayStore)
 							localStorageSetItem(storageKey, LZString.compress(fetchResult))
-					}, "text").fail(() => {
-						console.log("Failed to load url for lane", url);
+					}, "text").fail((xhr) => {
+						console.log("Failed to load url for lane", url, "error", xhr.status);
 
-						if (failure()) {
-							status.loaded = true
+						if (failure(xhr.status)) {
 							status.failed = true
 							invalidateUi()
 						}
@@ -276,22 +277,34 @@ class Lane<B extends BuildBase> {
 							localStorageWhittle(maxCacheSize - result.length)
 							deletionQueueRegister(timestamp, buildTag)
 
-							// Fetch babysitter report
-							fetchData("babysitter", jenkinsBabysitterUrl(this.tag, build.id), build.babysitterStatus,
-								(result:string) => {
-									build.interpretBabysitter(jsonLines(result))
-									this.buildsRemaining-- // Got a babysitter report, processing done
-									return true
-								},
+							// 404s (but not other failure modes) are treated as permanent and cached
+							let babysitter404Key = cachePrefix + buildTag + "!babysitter404"
+							if (!localStorageGetItem(babysitter404Key)) {
+								// Fetch babysitter report
+								fetchData("babysitter", jenkinsBabysitterUrl(this.tag, build.id), build.babysitterStatus,
+									(result:string) => {
+										build.interpretBabysitter(jsonLines(result))
+										this.buildsRemaining-- // Got a babysitter report, processing done
+										return true
+									},
 
-								// No babysitter report
-								() => {
-									this.buildsRemaining-- // Giving up. Processing done
-									return true
-								}
-							)
+									// No babysitter report
+									(status) => {
+										if (+status == 404)
+											localStorageSetItem(babysitter404Key, "1")
+
+										this.buildsRemaining-- // Giving up. Processing done
+										return true
+									}
+								)
+							} else {
+								this.buildsRemaining-- // Won't be checking for known-404'd babysitter report. Processing done
+								build.babysitterStatus.loaded = true
+								build.babysitterStatus.failed = true
+							}
 						} else {
-							this.buildsRemaining-- // Won't be checking for babysitter report. Processing done
+							this.buildsRemaining-- // Build ongoing, won't be checking for babysitter report. Processing done
+
 						}
 
 						return build.complete
@@ -306,13 +319,10 @@ class Lane<B extends BuildBase> {
 			invalidateUi()
 		}).fail(() => {
             console.log("Failed to load url for lane", this.apiUrl);
+			this.status.loaded = true
 			this.status.failed = true
 			invalidateUi()
 		})
-	}
-
-	loaded() {
-		return this.status.loaded || this.status.failed
 	}
 }
 
