@@ -145,7 +145,6 @@ class BuildBase {
 	babysitterStatus: Status
 	displayUrl: string       // Link to human-readable info page for build
 	complete: boolean        // If false, build is ongoing
-	babysitterSource: string // If we downloaded the babysitter script, where from?
 
 	constructor(laneTag: string, id: string) {
 		this.id = id
@@ -280,28 +279,15 @@ class Lane<B extends BuildBase> {
 							// Fetch babysitter report
 							fetchData("babysitter", jenkinsBabysitterUrl(this.tag, build.id), build.babysitterStatus,
 								(result:string) => {
-									build.babysitterSource = "Azure"
 									build.interpretBabysitter(jsonLines(result))
 									this.buildsRemaining-- // Got a babysitter report, processing done
 									return true
 								},
 
-								// Babysitter report failed, but don't trust it-- check old URL also
+								// No babysitter report
 								() => {
-									fetchData("babysitterLegacy", jenkinsBabysitterLegacyUrl(this.tag, build.id), build.babysitterStatus,
-										(result:string) => {
-											build.babysitterSource = "Jenkins"
-											build.interpretBabysitter(jsonLines(result))
-											this.buildsRemaining-- // Got a babysitter report, processing done
-											return true
-										},
-										() => {
-											this.buildsRemaining-- // Giving up. Processing done
-											return true
-										}
-									)
-
-									return false // Not really a failure
+									this.buildsRemaining-- // Giving up. Processing done
+									return true
 								}
 							)
 						} else {
@@ -323,6 +309,10 @@ class Lane<B extends BuildBase> {
 			this.status.failed = true
 			invalidateUi()
 		})
+	}
+
+	loaded() {
+		return this.status.loaded || this.status.failed
 	}
 }
 
