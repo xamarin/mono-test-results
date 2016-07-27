@@ -59,7 +59,7 @@ li.failureExpand a {
 	font-family: monospace;
 }
 
-.buildResult .noLoad {
+.buildResult .noLoad, .prTitle {
 	font-size:80%;
 	color:#AAAAAA;
 }

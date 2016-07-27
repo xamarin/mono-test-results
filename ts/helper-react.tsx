@@ -12,11 +12,12 @@ class Icon extends React.Component<IconProps, {}> {
 
 class AProps {
 	href: string
+	title: string
 }
 
 class A extends React.Component<AProps,{}> {
 	render() {
-		return <a href={this.props.href} target='_blank' >
+		return <a href={this.props.href} title={this.props.title} target='_blank' >
 			{(this.props as any).children}
 		</a>
 	}

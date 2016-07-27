@@ -164,8 +164,8 @@ class BuildBase {
 	}
 
 	// Subclasses should overload these to parse out the data they need
-	interpretBabysitter(jsons: any[]) { }
 	interpretMetadata(json) { }
+	interpretBabysitter(jsons: any[]) { }
 }
 
 // The type of the class object for a class that inherits from BuildBase

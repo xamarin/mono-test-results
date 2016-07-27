@@ -47,10 +47,37 @@ class Build extends BuildBase {
 	date: Date
 	result: string
 	failures: Failure[]
+	pr: string
+	prUrl: string
+	prTitle: string
 
 	constructor(laneTag: string, id: string) {
 		super(laneTag, id)
 		this.failures = []
+	}
+
+	interpretMetadata(json) {
+		if ('debug' in options) console.log("Got metadata", json)
+
+		this.date = new Date(+json.timestamp)
+		this.result = json.result
+
+		if (json.actions && json.actions.length && json.actions[0].parameters) {
+			for (let param of json.actions[0].parameters) {
+				switch (param.name) {
+					case "ghprbPullId":
+						this.pr = param.value;
+						break;
+					case "ghprbPullLink":
+						this.prUrl = param.value;
+						break;
+					case "ghprbPullTitle":
+						this.prTitle = param.value;
+						break;
+					default: break;
+				}
+			}
+		}
 	}
 
 	// See scripts/ci/babysitter in mono repo for json format
@@ -81,13 +108,6 @@ class Build extends BuildBase {
 				}
 			}
 		}
-	}
-
-	interpretMetadata(json) {
-		if ('debug' in options) console.log("Got metadata", json)
-
-		this.date = new Date(+json.timestamp)
-		this.result = json.result
 	}
 
 	resultString() {
@@ -250,6 +270,7 @@ class BuildFailuresProps {
 	build: Build
 	key: string
 	linkLabel: string
+	extraLabel: JSX.Element
 }
 
 class BuildFailuresState {
@@ -264,7 +285,7 @@ class BuildFailures extends React.Component<BuildFailuresProps, BuildFailuresSta
 	render() {
 		let build = this.props.build
 		let key = this.props.key
-		let buildLink = <A href={build.displayUrl}>{this.props.linkLabel}</A>
+		let buildLink = <span><A href={build.displayUrl} title={null}>{this.props.linkLabel}</A> {this.props.extraLabel}</span>
 
 		if (!build.metadataStatus.failed) {
 			let failures: JSX.Element[]
@@ -278,7 +299,7 @@ class BuildFailures extends React.Component<BuildFailuresProps, BuildFailuresSta
 				failures = failureSlice.map(renderFailure)
 				failures.push(
 					<li key="expand" className="failureExpand">
-						<Icon src="images/error.png" /> {""}
+						<Icon src="images/error.png" /> {" "}
 						<Clickable key="expand" label={label}
 							handler={
 								e => {
@@ -298,7 +319,7 @@ class BuildFailures extends React.Component<BuildFailuresProps, BuildFailuresSta
 
 			return <li key={key} className="buildResult">
 				{buildLink} {formatDate(build.date)},{" "}
-				<span className="buildResultString">{build.resultString()}</span>
+				<span className="buildResultString">{build.resultString()}</span> {" "}
 				{failureDisplay}
 			</li>
 		} else {
@@ -306,6 +327,20 @@ class BuildFailures extends React.Component<BuildFailuresProps, BuildFailuresSta
 				{buildLink}: <i className="noLoad">(Could not load)</i>
 			</li>
 		}
+	}
+}
+
+function linkPr(build: Build, title:boolean = false) {
+	if (build.pr) {
+		let titleDisplay = title ?
+			[
+				<span> </span>,
+				<span className="prTitle">"{build.prTitle}"</span>
+			] :
+			null
+		return <span className="prLink">(<A href={build.prUrl} title={build.prTitle}>PR {build.pr}</A>{titleDisplay})</span>
+	} else {
+		return null
 	}
 }
 
@@ -333,11 +368,11 @@ let ContentArea = React.createClass({
 							dateRange.add(build.date) // Side effects in a map? Ew
 
 							let linkLabel = "Build " + build.id
-							return <BuildFailures build={build} key={build.id} linkLabel={linkLabel} />
+							return <BuildFailures build={build} key={build.id} linkLabel={linkLabel} extraLabel={linkPr(build)}/>
 						})
 
 						return <div className="verboseLane" key={lane.tag}>
-							<A href={lane.displayUrl}>Lane {lane.name}</A>
+							<A href={lane.displayUrl} title={null}>Lane {lane.name}</A>
 							<ul>
 								{buildList}
 								{loader}
@@ -387,15 +422,20 @@ let ContentArea = React.createClass({
 								return ((+bd) - (+ad))
 							}
 						).map(buildKey => {
+						let extra: JSX.Element = null
 						let buildListing = buildListings[buildKey]
 						let laneDisplay = Object.keys(buildListing.lanes).sort(numericSort).map(laneIdx => {
 							let build = buildListing.lanes[laneIdx]
 							let lane = lanes[laneIdx]
-							return <BuildFailures build={build} key={lane.idx} linkLabel={lane.name} />
+
+							if (build.pr && !extra)
+								extra = linkPr(build)
+
+							return <BuildFailures build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} />
 						})
 
 						return <div className="verboseBuild" key={buildKey}>
-							<b>Build {buildKey}</b>
+							<b>Build {buildKey}</b> {extra}
 							<ul>
 								{laneDisplay}
 							</ul>
