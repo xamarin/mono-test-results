@@ -321,7 +321,8 @@ let ContentArea = React.createClass({
 				// List of lanes, then builds under lanes, then failures under builds.
 				case GroupBy.Lanes: {
 					let laneDisplay = readyLanes.map(lane => {
-						let readyBuilds = lane.builds.filter(build => build.loaded())
+						let readyBuilds = lane.builds.filter(build => build.loaded()).sort(
+							(a:Build,b:Build) => (+b.date) - (+a.date))
 						if (inProgressVisible.value == Visibility.Hide)
 							readyBuilds = readyBuilds.filter(build => build.result != null)
 
@@ -380,7 +381,7 @@ let ContentArea = React.createClass({
 					}
 
 					let buildDisplay = Object.keys(buildListings).sort(
-							(a,b) => { // Sort by date
+							(a:string,b:string) => { // Sort by date
 								let ad = buildListings[a].dateRange.late
 								let bd = buildListings[b].dateRange.late
 								return ((+bd) - (+ad))
@@ -440,7 +441,7 @@ let ContentArea = React.createClass({
 						}
 					}
 					let failureDisplay = Object.keys(failureListings)
-						.sort( (a,b) => failureListings[b].count - failureListings[a].count )
+						.sort( (a:string,b:string) => failureListings[b].count - failureListings[a].count )
 						.map( key => {
 							let failureListing = failureListings[key]
 							let failure = failureListing.obj

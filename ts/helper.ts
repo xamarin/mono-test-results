@@ -65,7 +65,7 @@ function objectValues<T>(dict: { [key: string] : T}) : T[] {
 // Date ops
 
 function sameDay(a:Date, b:Date) {
-	return a.getFullYear() == a.getFullYear() && a.getMonth() == b.getMonth() && a.getDay() == b.getDay()
+	return a.getFullYear() == b.getFullYear() && a.getMonth() == b.getMonth() && a.getDate() == b.getDate()
 }
 
 // Config -- Put debug options (put #! after URL) in options dict
