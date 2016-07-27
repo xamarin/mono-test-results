@@ -45,6 +45,16 @@ li.failure {
 	background-size: 16px 16px;
 }
 
+li.failureExpand {
+	list-style-type:none;
+	margin:20px;
+	font-weight:bold;
+}
+
+li.failureExpand a {
+	color:#CC0000;
+}
+
 .invocation {
 	font-family: monospace;
 }

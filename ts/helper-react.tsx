@@ -1,5 +1,15 @@
 /// <reference path="helper.ts" />
 
+class IconProps {
+	src: string
+}
+
+class Icon extends React.Component<IconProps, {}> {
+	render () {
+		return <img className="icon" src={this.props.src} />
+	}
+}
+
 class AProps {
 	href: string
 }
@@ -9,6 +19,22 @@ class A extends React.Component<AProps,{}> {
 		return <a href={this.props.href} target='_blank' >
 			{(this.props as any).children}
 		</a>
+	}
+}
+
+class ClickableProps {
+	handler: React.EventHandler<React.MouseEvent>
+	key: string
+	label: string
+}
+
+class Clickable extends React.Component<ClickableProps, {}> {
+	render() {
+		return <a key={this.props.key}
+					href="javascript:void(0)"
+					className="clickable"
+					onClick={this.props.handler}
+				>{this.props.label}</a>
 	}
 }
 
@@ -37,19 +63,17 @@ class Choice<Key> extends React.Component<ChoiceProps<Key>, {}> {
 			if (!first)
 				children.push(<span key={"comma"+value}>, </span>)
 
+			let reactKey = "button"+value
 			if (value == this.props.value) {
-				children.push(<span key={"button"+value}>{key}</span>)
+				children.push(<span key={reactKey}>{key}</span>)
 			} else {
-				children.push(<a key={"button"+value}
-					href="javascript:void(0)"
-					className="clickable"
-					onClick={
+				children.push(<Clickable key={reactKey} label={key}
+					handler={
 						e => {
 							this.props.data.value = value
 							invalidateUi()
 						}
-					}
-				>{key}</a>)
+					} />)
 			}
 			first = false
 		}

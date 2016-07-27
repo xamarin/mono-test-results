@@ -1,6 +1,10 @@
 /// <reference path="./test-download.ts" />
 /// <reference path="./helper-react.tsx" />
 
+// Constants
+
+const max_failures_unexpanded = 5
+
 // Load
 
 enum FailureKind {
@@ -198,7 +202,7 @@ class FailureListing extends Listing {
 
 // Presentation
 
-let loadingIcon = <span><img className="icon" src="images/loading.gif" /> Loading...</span>
+let loadingIcon = <span><Icon src="images/loading.gif" /> Loading...</span>
 
 let LoadingBox = React.createClass({
 	render: function() {
@@ -214,13 +218,13 @@ let LoadingBox = React.createClass({
 	}
 })
 
-let ErrorBox = React.createClass({
+let LaneErrorBox = React.createClass({
 	render: function() {
 		let errors = filterLanes().filter(lane => lane.status.failed)
 		if (errors.length) {
-			let errorDisplay = lanes.map(lane =>
+			let errorDisplay = errors.map(lane =>
 				<div className="errorItem">
-					<img className="icon" src="images/error.png" title={lane.apiUrl} />
+					<Icon src="images/error.png" />
 					Failed to load index for lane <strong>{lane.name}</strong>
 				</div>
 			)
@@ -242,25 +246,66 @@ function renderFailure(failure: Failure) {
 	</li>
 }
 
-function renderFailures(build: Build, key, buildLink: JSX.Element) {
-	if (!build.metadataStatus.failed) {
-		let failures = build.failures.map(renderFailure)
-		let failureDisplay : JSX.Element = null
+class BuildFailuresProps {
+	build: Build
+	key: string
+	linkLabel: string
+}
 
-		if (failures.length)
-			failureDisplay = <ul>{failures}</ul>
-		else if (build.babysitterStatus.failed)
-			failureDisplay = <i className="noLoad">(Test data did not load)</i>
+class BuildFailuresState {
+	expand:boolean
+}
 
-		return <li key={key} className="buildResult">
-			{buildLink} {formatDate(build.date)},{" "}
-			<span className="buildResultString">{build.resultString()}</span>
-			{failureDisplay}
-		</li>
-	} else {
-		return <li key={key} className="buildResultNoLoad">
-			{buildLink}: <i className="noLoad">(Could not load)</i>
-		</li>
+class BuildFailures extends React.Component<BuildFailuresProps, BuildFailuresState> {
+	constructor(props: BuildFailuresProps) {
+		super(props)
+		this.state = {expand: false}
+	}
+	render() {
+		let build = this.props.build
+		let key = this.props.key
+		let buildLink = <A href={build.displayUrl}>{this.props.linkLabel}</A>
+
+		if (!build.metadataStatus.failed) {
+			let failures: JSX.Element[]
+			let failureDisplay : JSX.Element = null
+
+			if (!this.state.expand && build.failures.length > max_failures_unexpanded) {
+				let showCount = max_failures_unexpanded - 1 // Never show "1 more failures"
+				let failureSlice = build.failures.slice(0, showCount)
+				let label = "[" + (build.failures.length - showCount)
+					+ " more failures]"
+				failures = failureSlice.map(renderFailure)
+				failures.push(
+					<li key="expand" className="failureExpand">
+						<Icon src="images/error.png" /> {""}
+						<Clickable key="expand" label={label}
+							handler={
+								e => {
+									this.setState({expand: true})
+									invalidateUi()
+								}
+							} />
+					</li>)
+			} else {
+				failures = build.failures.map(renderFailure)
+			}
+
+			if (failures.length)
+				failureDisplay = <ul>{failures}</ul>
+			else if (build.babysitterStatus.failed)
+				failureDisplay = <i className="noLoad">(Test data did not load)</i>
+
+			return <li key={key} className="buildResult">
+				{buildLink} {formatDate(build.date)},{" "}
+				<span className="buildResultString">{build.resultString()}</span>
+				{failureDisplay}
+			</li>
+		} else {
+			return <li key={key} className="buildResultNoLoad">
+				{buildLink}: <i className="noLoad">(Could not load)</i>
+			</li>
+		}
 	}
 }
 
@@ -284,9 +329,10 @@ let ContentArea = React.createClass({
 							<li className="loading">{loadingIcon}</li> :
 							null
 						let buildList = readyBuilds.map(build => {
-							let buildLink = <A href={build.displayUrl}>Build {build.id}</A>
 							dateRange.add(build.date) // Side effects in a map? Ew
-							return renderFailures(build, build.id, buildLink)
+
+							let linkLabel = "Build " + build.id
+							return <BuildFailures build={build} key={build.id} linkLabel={linkLabel} />
 						})
 
 						return <div className="verboseLane" key={lane.tag}>
@@ -344,8 +390,7 @@ let ContentArea = React.createClass({
 						let laneDisplay = Object.keys(buildListing.lanes).sort(numericSort).map(laneIdx => {
 							let build = buildListing.lanes[laneIdx]
 							let lane = lanes[laneIdx]
-							let buildLink = <A href={build.displayUrl}>{lane.name}</A>
-							return renderFailures(build, lane.idx, buildLink)
+							return <BuildFailures build={build} key={lane.idx} linkLabel={lane.name} />
 						})
 
 						return <div className="verboseBuild" key={buildKey}>
@@ -446,7 +491,7 @@ function render() {
 			{inProgressChoice}
 		</div>
 		<LoadingBox />
-		<ErrorBox />
+		<LaneErrorBox />
 		<hr className="sectionDivider" />
 		<ContentArea />
 	</div>, document.getElementById('content'))
