@@ -8,7 +8,7 @@
 
 // Constants
 
-const maxBuildQueries = 100
+const maxBuildQueries = 50
 const maxCacheSize = 5000000 // Limit 5 MB
 const cachePrefix = "cache!"
 

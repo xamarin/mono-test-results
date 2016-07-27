@@ -65,10 +65,23 @@ class Choice<Key> extends React.Component<ChoiceProps<Key>, {}> {
 				children.push(<span key={"comma"+value}>, </span>)
 
 			let reactKey = "button"+value
+
+			// Insert spaces into enum key name. I admit that this is a little silly.
+			let label = key[0]
+			for (let i = 1; i < key.length; i++) {
+				let ch = key[i]
+				if (isUpperCaseChar(ch) || (isNumberChar(ch) && !isNumberChar(key[i-1]))) {
+					label += " "
+					label += ch.toLowerCase()
+				} else {
+					label += ch
+				}
+			}
+
 			if (value == this.props.value) {
-				children.push(<span key={reactKey}>{key}</span>)
+				children.push(<span key={reactKey}>{label}</span>)
 			} else {
-				children.push(<Clickable key={reactKey} label={key}
+				children.push(<Clickable key={reactKey} label={label}
 					handler={
 						e => {
 							this.props.data.value = value

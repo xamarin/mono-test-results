@@ -4,6 +4,7 @@
 // Constants
 
 const max_failures_unexpanded = 5
+const dayMs = 24*60*60*1000
 
 // Load
 
@@ -66,15 +67,15 @@ class Build extends BuildBase {
 			for (let param of json.actions[0].parameters) {
 				switch (param.name) {
 					case "ghprbPullId":
-						this.pr = param.value;
-						break;
+						this.pr = param.value
+						break
 					case "ghprbPullLink":
-						this.prUrl = param.value;
-						break;
+						this.prUrl = param.value
+						break
 					case "ghprbPullTitle":
-						this.prTitle = param.value;
-						break;
-					default: break;
+						this.prTitle = param.value
+						break
+					default: break
 				}
 			}
 		}
@@ -130,12 +131,22 @@ enum Visibility {
 	Hide
 }
 
+enum DisplaySpan {
+	All,
+	Last7Days,
+	Last48Hr,
+	Last24Hr
+}
+
 class ChoiceVisibility extends Choice<Visibility> {}
 let prVisible = new Ref(Visibility.Show)
 let inProgressVisible = new Ref(Visibility.Show)
 
 class ChoiceGroupBy extends Choice<GroupBy> {}
 let groupBy = new Ref(GroupBy.Lanes)
+
+class ChoiceDisplaySpan extends Choice<DisplaySpan> {}
+let displaySpan = new Ref(DisplaySpan.All)
 
 // Utility
 
@@ -151,7 +162,7 @@ function formatDate(date: Date) {
 	if (sameDay(now, date)) {
 		day = "Today"
 	} else {
-		let yesterday = new Date(+now - 60*60*24*1000)
+		let yesterday = new Date(+now - dayMs)
 		if (sameDay(yesterday, date))
 			day = "Yesterday"
 	}
@@ -180,6 +191,25 @@ function formatRange(range: DateRange) {
 	if (!range.early || !range.late)
 		return <i>(Invalid date)</i>
 	return <span className="datetimeRange">{formatDate(range.early)} - {formatDate(range.late)}</span>
+}
+
+function buildInTimespan(build: Build) {
+	let cutoff: number // In days
+	switch (displaySpan.value) {
+		case DisplaySpan.All:
+			return true
+		case DisplaySpan.Last24Hr:
+			cutoff = 1
+			break
+		case DisplaySpan.Last48Hr:
+			cutoff = 2
+			break
+		case DisplaySpan.Last7Days:
+			cutoff = 7
+			break
+	}
+	let now = new Date()
+	return +build.date > (+now - cutoff*dayMs)
 }
 
 // Listing containers
@@ -356,7 +386,7 @@ let ContentArea = React.createClass({
 				// List of lanes, then builds under lanes, then failures under builds.
 				case GroupBy.Lanes: {
 					let laneDisplay = readyLanes.map(lane => {
-						let readyBuilds = lane.builds.filter(build => build.loaded()).sort(
+						let readyBuilds = lane.builds.filter(build => build.loaded() && buildInTimespan(build)).sort(
 							(a:Build,b:Build) => (+b.date) - (+a.date))
 						if (inProgressVisible.value == Visibility.Hide)
 							readyBuilds = readyBuilds.filter(build => build.result != null)
@@ -391,6 +421,9 @@ let ContentArea = React.createClass({
 					let buildListings: {[key:string] : BuildListing} = {}
 					for (let lane of readyLanes) {
 						for (let build of lane.builds) {
+							if (!buildInTimespan(build))
+								continue
+
 							let buildListing = getOrDefault(buildListings, build.id,
 									() => new BuildListing())
 
@@ -462,8 +495,8 @@ let ContentArea = React.createClass({
 
 					for (let lane of readyLanes) {
 						for (let build of lane.builds) {
-							if (build.result == null)
-								continue;
+							if (build.result == null || !buildInTimespan(build))
+								continue
 
 							trials++
 							dateRange.add(build.date)
@@ -526,6 +559,8 @@ function render() {
 		<div><span className="pageTitle">Babysitter logs</span>
 			<br />
 			Group by: <ChoiceGroupBy enum={GroupBy} data={groupBy} value={groupBy.value} />
+			<br />
+			Timespan: <ChoiceDisplaySpan enum={DisplaySpan} data={displaySpan} value={displaySpan.value} />
 			<br />
 			Filters:
 			PRs <ChoiceVisibility enum={Visibility} data={prVisible} value={prVisible.value} />

@@ -13,6 +13,15 @@ function splitOne(str:string, demarcate:string) {
 	return [ str.substring(0,index), str.substring(index) ]
 }
 
+function isUpperCaseChar(str:string) {
+	return str.toUpperCase() == str && str.toLowerCase() != str
+}
+
+let numTest = /\d/
+function isNumberChar(str:string) {
+	return numTest.test(str)
+}
+
 // Typescript ops
 
 function enumStringKeys(e) {
