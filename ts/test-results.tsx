@@ -258,7 +258,7 @@ let LoadingBox = React.createClass({
 	render: function() {
 		let dirty = false
 		for (let lane of filterLanes())
-			if (!lane.status.loaded || lane.buildsRemaining > 0)
+			if (!lane.loaded() || lane.buildsRemaining > 0)
 				dirty = true
 
 		if (dirty)
