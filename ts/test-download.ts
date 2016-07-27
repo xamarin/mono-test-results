@@ -256,6 +256,7 @@ class Lane<B extends BuildBase> {
 						console.log("Failed to load url for lane", url, "error", xhr.status);
 
 						if (failure(xhr.status)) {
+							status.loaded = true
 							status.failed = true
 							invalidateUi()
 						}
