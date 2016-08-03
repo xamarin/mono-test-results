@@ -132,21 +132,21 @@ enum Visibility {
 }
 
 enum DisplaySpan {
-	All,
+	AllCached,
 	Last7Days,
 	Last48Hr,
 	Last24Hr
 }
 
 class ChoiceVisibility extends Choice<Visibility> {}
-let prVisible = new Ref(Visibility.Show)
-let inProgressVisible = new Ref(Visibility.Show)
+let prVisible = new Ref(Visibility.Hide)
+let inProgressVisible = new Ref(Visibility.Hide)
 
 class ChoiceGroupBy extends Choice<GroupBy> {}
 let groupBy = new Ref(GroupBy.Lanes)
 
 class ChoiceDisplaySpan extends Choice<DisplaySpan> {}
-let displaySpan = new Ref(DisplaySpan.All)
+let displaySpan = new Ref(DisplaySpan.Last48Hr)
 
 // Utility
 
@@ -196,7 +196,7 @@ function formatRange(range: DateRange) {
 function buildInTimespan(build: Build) {
 	let cutoff: number // In days
 	switch (displaySpan.value) {
-		case DisplaySpan.All:
+		case DisplaySpan.AllCached:
 			return true
 		case DisplaySpan.Last24Hr:
 			cutoff = 1
@@ -210,6 +210,13 @@ function buildInTimespan(build: Build) {
 	}
 	let now = new Date()
 	return +build.date > (+now - cutoff*dayMs)
+}
+
+function currentlyLoading() {
+	for (let lane of filterLanes())
+		if (!lane.status.loaded || lane.buildsRemaining > 0)
+			return true
+	return false
 }
 
 // Listing containers
@@ -256,15 +263,29 @@ let loadingIcon = <span><Icon src="images/loading.gif" /> Loading...</span>
 
 let LoadingBox = React.createClass({
 	render: function() {
-		let dirty = false
-		for (let lane of filterLanes())
-			if (!lane.status.loaded || lane.buildsRemaining > 0)
-				dirty = true
-
-		if (dirty)
+		if (currentlyLoading())
 			return <div className="loadingBox"><p>{loadingIcon}</p></div>
 		else
 			return <div>&nbsp;</div>
+	}
+})
+
+let ReloadControl = React.createClass({
+	render: function() {
+		let reloadControl = <span><Icon src="images/reload.png" /> Reload</span>
+
+		if (!currentlyLoading())
+			reloadControl = <ClickableSpan key={null} handler={
+				e => {
+					for (let lane of lanes) {
+						lane.status = new Status()
+						lane.load()
+					}
+					invalidateUi()
+				}
+			}>{reloadControl}</ClickableSpan>
+
+		return <div className="reloadControl">{reloadControl}</div>
 	}
 })
 
@@ -376,7 +397,7 @@ function linkPr(build: Build, title:boolean = false) {
 
 let ContentArea = React.createClass({
 	render: function() {
-		let readyLanes = filterLanes().filter(lane => lane.status.loaded)
+		let readyLanes = filterLanes().filter(lane => lane.visible())
 		let dateRange = new DateRange()
 
 		if (readyLanes.length) {
@@ -386,13 +407,14 @@ let ContentArea = React.createClass({
 				// List of lanes, then builds under lanes, then failures under builds.
 				case GroupBy.Lanes: {
 					let laneDisplay = readyLanes.map(lane => {
-						let loadedBuilds = lane.builds.filter(build => build.loaded())
+						let builds = lane.builds()
+						let loadedBuilds = builds.filter(build => build.loaded())
 						let readyBuilds = loadedBuilds.filter(buildInTimespan).sort(
 							(a:Build,b:Build) => (+b.date) - (+a.date))
 						if (inProgressVisible.value == Visibility.Hide)
 							readyBuilds = readyBuilds.filter(build => build.result != null)
 
-						let loader = (loadedBuilds.length < lane.builds.length) ?
+						let loader = (loadedBuilds.length < builds.length) ?
 							<li className="loading">{loadingIcon}</li> :
 							null
 						let buildList = readyBuilds.map(build => {
@@ -421,7 +443,7 @@ let ContentArea = React.createClass({
 				case GroupBy.Builds: {
 					let buildListings: {[key:string] : BuildListing} = {}
 					for (let lane of readyLanes) {
-						for (let build of lane.builds) {
+						for (let build of lane.builds()) {
 							if (!buildInTimespan(build))
 								continue
 
@@ -495,7 +517,7 @@ let ContentArea = React.createClass({
 					let trials = 0
 
 					for (let lane of readyLanes) {
-						for (let build of lane.builds) {
+						for (let build of lane.builds()) {
 							if (build.result == null || !buildInTimespan(build))
 								continue
 
@@ -557,8 +579,9 @@ function render() {
 		null
 
 	ReactDOM.render(<div>
-		<div><span className="pageTitle">Babysitter logs</span>
-			<br />
+		<div className="pageTitle">Babysitter logs</div>
+		<ReloadControl />
+		<div>
 			Group by: <ChoiceGroupBy enum={GroupBy} data={groupBy} value={groupBy.value} />
 			<br />
 			Timespan: <ChoiceDisplaySpan enum={DisplaySpan} data={displaySpan} value={displaySpan.value} />

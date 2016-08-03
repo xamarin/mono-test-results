@@ -186,7 +186,8 @@ class Lane<B extends BuildBase> {
 	apiUrl: string     // Link to url JSON was loaded from
 	isPr: boolean
 	status: Status
-	builds: B[]
+	everLoaded: boolean
+	buildMap: { [key:string] : B }
 	buildsRemaining: number // Count of builds not yet finished loading
 	buildConstructor: BuildClass<B>
 
@@ -198,119 +199,138 @@ class Lane<B extends BuildBase> {
 		this.apiUrl = jenkinsLaneUrl(laneName)
 		this.isPr = isPr
 		this.status = new Status()
-		this.builds = []
+		this.everLoaded = false
+		this.buildMap = {}
 		this.buildsRemaining = 0
 		this.buildConstructor = buildConstructor
 	}
+
+	builds() { return objectValues(this.buildMap) }
+
+	visible() { return this.status.loaded || this.everLoaded }
 
 	load() {
 		if ('debug' in options) console.log("lane loading url", this.apiUrl)
 		$.get(this.apiUrl, laneResult => {
 			this.status.loaded = true
+			this.everLoaded = true
 			if ('debug' in options) console.log("lane loaded url", this.apiUrl, "result:", laneResult)
 			let queries = 0
 
 			this.buildsRemaining = Math.min(laneResult.builds.length, maxBuildQueries)
 			for (let buildInfo of laneResult.builds) {
-				let build = new this.buildConstructor(this.tag, buildInfo.number)
-				this.builds.push(build)
-				let buildTag = build.id + "!" + this.tag
+				let buildId = String(buildInfo.number)
 
-				let fetchData = (tag:string,    // Tag for cache
-								 url:string,    // URL to load
-								 status:Status, // Status variable to effect
-								 success:(result:string)=>boolean,     // Return true if data good enough to store
-								 failure:(result)=>boolean = ()=>true  // Return true if failure is "real" (false to recover)
-								                                       // (Note: Failure recovery is no longer used,
-								                                       //        it was originally for checking alternate URLs)
-								) => {
-					let storageKey = cachePrefix + buildTag + "!" + tag
-					let storageValue = localStorageGetItem(storageKey)
+				if (this.buildMap[buildId] && this.buildMap[buildId].complete) {
+					this.buildsRemaining--
+				} else {
+					let buildTag = buildId + "!" + this.tag
+					let build = new this.buildConstructor(this.tag, buildId)
 
-					if (storageValue) {
-						status.loaded = true
-						success(LZString.decompress(storageValue)) // Ignore result, value already stored
-						invalidateUi()
-						return
-					}
+					let fetchData = (tag:string,    // Tag for cache
+									 url:string,    // URL to load
+									 status:Status, // Status variable to effect
+									 success:(result:string)=>boolean,     // Return true if data good enough to store
+									 failure:(result)=>boolean = ()=>true  // Return true if failure is "real" (false to recover)
+									                                       // (Note: Failure recovery is no longer used,
+									                                       //        it was originally for checking alternate URLs)
+									) => {
+						let storageKey = cachePrefix + buildTag + "!" + tag
+						let storageValue = localStorageGetItem(storageKey)
 
-					if ('debug' in options) console.log("build", build.id, "for lane", this.name, "loading", tag, "url", url)
-
-					// Notice this fetches *text*
-					$.get(url, fetchResult => {
-						if ('debug' in options) console.log("build loaded url", url, "result length:", fetchResult.length)
-
-						let mayStore = false
-						status.loaded = true
-						try {
-							mayStore = success(fetchResult)
-						} catch (e) {
-							console.log("Failed to interpret result of url:", url, "exception:", e)
-							status.failed = true
-						}
-
-						invalidateUi()
-						if (!status.failed && mayStore)
-							localStorageSetItem(storageKey, LZString.compress(fetchResult))
-					}, "text").fail((xhr) => {
-						console.log("Failed to load url for lane", url, "error", xhr.status);
-
-						if (failure(xhr.status)) {
+						if (storageValue) {
 							status.loaded = true
-							status.failed = true
+							success(LZString.decompress(storageValue)) // Ignore result, value already stored
 							invalidateUi()
+							return
 						}
-					})
-				}
 
-				// Fetch metadata
-				fetchData("metadata", jenkinsBuildUrl(this.tag, build.id), build.metadataStatus,
-					(result:string) => {
-						let json = JSON.parse(result)
-						build.complete = !!json.result
-						build.interpretMetadata(json)
+						if ('debug' in options) console.log("build", build.id, "for lane", this.name, "loading", tag, "url", url)
 
-						// If metadata received and build is finished,
-						if (build.complete) {
-							let timestamp = json.timestamp
+						// Notice this fetches *text*
+						$.get(url, fetchResult => {
+							if ('debug' in options) console.log("build loaded url", url, "result length:", fetchResult.length)
 
-							// Manage cache size
-							localStorageWhittle(maxCacheSize - result.length)
-							deletionQueueRegister(timestamp, buildTag)
-
-							// 404s (but not other failure modes) are treated as permanent and cached
-							let babysitter404Key = cachePrefix + buildTag + "!babysitter404"
-							if (!localStorageGetItem(babysitter404Key)) {
-								// Fetch babysitter report
-								fetchData("babysitter", jenkinsBabysitterUrl(this.tag, build.id), build.babysitterStatus,
-									(result:string) => {
-										build.interpretBabysitter(jsonLines(result))
-										this.buildsRemaining-- // Got a babysitter report, processing done
-										return true
-									},
-
-									// No babysitter report
-									(status) => {
-										if (+status == 404)
-											localStorageSetItem(babysitter404Key, "1")
-
-										this.buildsRemaining-- // Giving up. Processing done
-										return true
-									}
-								)
-							} else {
-								this.buildsRemaining-- // Won't be checking for known-404'd babysitter report. Processing done
-								build.babysitterStatus.loaded = true
-								build.babysitterStatus.failed = true
+							let mayStore = false
+							status.loaded = true
+							try {
+								mayStore = success(fetchResult)
+							} catch (e) {
+								console.log("Failed to interpret result of url:", url, "exception:", e)
+								status.failed = true
 							}
-						} else {
-							this.buildsRemaining-- // Build ongoing, won't be checking for babysitter report. Processing done
 
-						}
+							invalidateUi()
+							if (!status.failed && mayStore)
+								localStorageSetItem(storageKey, LZString.compress(fetchResult))
+						}, "text").fail((xhr) => {
+							console.log("Failed to load url for lane", url, "error", xhr.status);
 
-						return build.complete
+							if (failure(xhr.status)) {
+								status.loaded = true
+								status.failed = true
+								invalidateUi()
+							}
+						})
 					}
-				)
+
+					// Fetch metadata
+					fetchData("metadata", jenkinsBuildUrl(this.tag, build.id), build.metadataStatus,
+						(result:string) => {
+							let json = JSON.parse(result)
+							build.complete = !!json.result
+							build.interpretMetadata(json)
+
+							// Do this pretty late, so reloads look nice.
+							this.buildMap[buildId] = build
+
+							// If metadata received and build is finished,
+							if (build.complete) {
+								let timestamp = json.timestamp
+
+								// Manage cache size
+								localStorageWhittle(maxCacheSize - result.length)
+								deletionQueueRegister(timestamp, buildTag)
+
+								// 404s (but not other failure modes) are treated as permanent and cached
+								let babysitter404Key = cachePrefix + buildTag + "!babysitter404"
+								if (!localStorageGetItem(babysitter404Key)) {
+									// Fetch babysitter report
+									fetchData("babysitter", jenkinsBabysitterUrl(this.tag, build.id), build.babysitterStatus,
+										(result:string) => {
+											build.interpretBabysitter(jsonLines(result))
+											this.buildsRemaining-- // Got a babysitter report, processing done
+											return true
+										},
+
+										// No babysitter report
+										(status) => {
+											if (+status == 404)
+												localStorageSetItem(babysitter404Key, "1")
+
+											this.buildsRemaining-- // Giving up. Processing done
+											return true
+										}
+									)
+								} else {
+									this.buildsRemaining-- // Won't be checking for known-404'd babysitter report. Processing done
+									build.babysitterStatus.loaded = true
+									build.babysitterStatus.failed = true
+								}
+							} else {
+								this.buildsRemaining-- // Build ongoing, won't be checking for babysitter report. Processing done
+
+							}
+
+							return build.complete
+						},
+
+						(status) => {
+							this.buildMap[buildId] = build
+							return true
+						}
+					)
+				}
 
 				queries++
 				if (queries >= maxBuildQueries)

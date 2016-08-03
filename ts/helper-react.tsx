@@ -39,6 +39,21 @@ class Clickable extends React.Component<ClickableProps, {}> {
 	}
 }
 
+class ClickableSpanProps {
+	handler: React.EventHandler<React.MouseEvent>
+	key: string
+}
+
+class ClickableSpan extends React.Component<ClickableSpanProps, {}> {
+	render() {
+		return <a key={this.props.key}
+					href="javascript:void(0)"
+					className="clickable"
+					onClick={this.props.handler}
+				>{(this.props as any).children}</a>
+	}
+}
+
 /* FIXME: I'm not sure why "value" had to be passed in explicitly; it ought to
  * be derivable from data, but when I tried that I didn't get rerenders. Maybe
  * I am not using React correctly here. --Andi */

@@ -26,6 +26,11 @@ img.icon {
 	width:1;
 }
 
+.reloadControl {
+	float:right;
+	font-weight: bold;
+}
+
 /* Lane display */
 
 li {
