@@ -42,6 +42,10 @@ class Failure {
 	key() : string {
 		return this.step + (this.test ? this.test : "")
 	}
+
+	equals(other:Failure) : boolean {
+		return this.step == other.step && this.test == other.test && this.kind == other.kind
+	}
 }
 
 class Build extends BuildBase {
@@ -147,6 +151,32 @@ let groupBy = new Ref(GroupBy.Lanes)
 
 class ChoiceDisplaySpan extends Choice<DisplaySpan> {}
 let displaySpan = new Ref(DisplaySpan.Last48Hr)
+
+// Test filters
+
+class TestFilter {
+	failure: Failure
+	constructor(failure:Failure) {
+		this.failure = failure
+	}
+
+	match(build: Build) : boolean {
+		for (let failure of build.failures) {
+			if (this.failure.equals(failure))
+				return true
+		}
+		return false
+	}
+
+	display() {
+		if (this.failure.test)
+			return <span className="failedTestName">{this.failure.test}</span>
+		else
+			return <span className="invocation">{this.failure.step}</span>
+	}
+}
+
+let testFilter = null
 
 // Utility
 
@@ -289,6 +319,19 @@ let ReloadControl = React.createClass({
 	}
 })
 
+let TestFilterDisplay = React.createClass({
+	render: function() {
+		if (!testFilter || groupBy.value == GroupBy.Failures)
+			return null
+
+		return <span> | Showing only {testFilter.display()} <Clickable label="[X]" key={null}
+			handler={e => {
+				testFilter = null
+				invalidateUi()
+		}} /></span>
+	}
+})
+
 let LaneErrorBox = React.createClass({
 	render: function() {
 		let errors = filterLanes().filter(lane => lane.status.failed)
@@ -305,6 +348,28 @@ let LaneErrorBox = React.createClass({
 		}
 	}
 })
+
+class FailureFilterLinkProps {
+	count: number
+	of: number
+	isLane: boolean
+	failure: Failure
+}
+
+class FailureFilterLink extends React.Component<FailureFilterLinkProps, {}> {
+	render() {
+		let label = "" + this.props.count + "/" + this.props.of + " " +
+			(this.props.isLane ? "lanes" : "builds")
+
+		return <Clickable label={label} key={null} handler={
+			e => {
+				testFilter = new TestFilter(this.props.failure)
+				groupBy.value = this.props.isLane ? GroupBy.Lanes : GroupBy.Builds
+				invalidateUi()
+			}
+		} />
+	}
+}
 
 function renderFailure(failure: Failure) {
 	let testLine = failure.test ? <div className="failedTestName">{failure.test}</div> : null
@@ -409,10 +474,20 @@ let ContentArea = React.createClass({
 					let laneDisplay = readyLanes.map(lane => {
 						let builds = lane.builds()
 						let loadedBuilds = builds.filter(build => build.loaded())
-						let readyBuilds = loadedBuilds.filter(buildInTimespan).sort(
-							(a:Build,b:Build) => (+b.date) - (+a.date))
+						let readyBuilds = loadedBuilds.filter(buildInTimespan)
+
 						if (inProgressVisible.value == Visibility.Hide)
 							readyBuilds = readyBuilds.filter(build => build.result != null)
+						if (testFilter) {
+							readyBuilds = readyBuilds.filter(build => testFilter.match(build))
+
+							// HACK: Hide this lane in the lane display
+							if (!readyBuilds.length)
+								return null
+						}
+
+						readyBuilds = readyBuilds.sort(
+							(a:Build,b:Build) => (+b.date) - (+a.date))
 
 						let loader = (loadedBuilds.length < builds.length) ?
 							<li className="loading">{loadingIcon}</li> :
@@ -445,6 +520,8 @@ let ContentArea = React.createClass({
 					for (let lane of readyLanes) {
 						for (let build of lane.builds()) {
 							if (!buildInTimespan(build))
+								continue
+							if (testFilter && !testFilter.match(build))
 								continue
 
 							let buildListing = getOrDefault(buildListings, build.id,
@@ -498,12 +575,17 @@ let ContentArea = React.createClass({
 						</div>
 					})
 
-					let failCount = objectValues(buildListings)
-						.filter(buildListing => buildListing.failedLanes > 0)
-						.length
+					let failDisplay: JSX.Element = null
+
+					if (!testFilter) {
+						let failCount = objectValues(buildListings)
+							.filter(buildListing => buildListing.failedLanes > 0)
+							.length
+						failDisplay = <span> | <b>{failCount} of {countKeys(buildListings)}</b> builds have failures:</span>
+					}
 
 					return <div className="verboseBuildList">
-						<p>Showing {formatRange(dateRange)} | <b>{failCount} of {countKeys(buildListings)}</b> builds have failures:</p>
+						<p>Showing {formatRange(dateRange)}{failDisplay}</p>
 						<div className="buildList">
 							{buildDisplay}
 						</div>
@@ -551,8 +633,11 @@ let ContentArea = React.createClass({
 							return <li className="failure" key={key}>
 								{title}
 								<b>{failureListing.count}</b> failure{failureListing.count>1?"s":""}{" "}
-								(failed on {countKeys(failureListing.builds)}/{countKeys(uniqueBuilds)} builds,{" "}
-								{countKeys(failureListing.lanes)}/{readyLanes.length} lanes)
+								(failed on <FailureFilterLink count={countKeys(failureListing.lanes)}
+									of={readyLanes.length} isLane={true} failure={failure} />
+									; <FailureFilterLink count={countKeys(failureListing.builds)}
+									of={countKeys(uniqueBuilds)} isLane={false} failure={failure} />
+								)
 							</li>
 						})
 
@@ -589,6 +674,7 @@ function render() {
 			Filters:
 			PRs <ChoiceVisibility enum={Visibility} data={prVisible} value={prVisible.value} />
 			{inProgressChoice}
+			<TestFilterDisplay />
 		</div>
 		<LoadingBox />
 		<LaneErrorBox />
