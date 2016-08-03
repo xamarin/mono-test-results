@@ -264,7 +264,7 @@ let loadingIcon = <span><Icon src="images/loading.gif" /> Loading...</span>
 let LoadingBox = React.createClass({
 	render: function() {
 		if (currentlyLoading())
-			return <div className="loadingBox"><p>{loadingIcon}</p></div>
+			return <div className="loadingBox">{loadingIcon}</div>
 		else
 			return <div>&nbsp;</div>
 	}

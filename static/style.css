@@ -26,6 +26,10 @@ img.icon {
 	width:1;
 }
 
+.loadingBox {
+	text-align:center;
+}
+
 .reloadControl {
 	float:right;
 	font-weight: bold;
