@@ -393,6 +393,7 @@ function renderFailure(failure: Failure) {
 }
 
 class BuildFailuresProps {
+	lane: Lane<Build>
 	build: Build
 	key: string
 	linkLabel: string
@@ -446,6 +447,7 @@ class BuildFailures extends React.Component<BuildFailuresProps, BuildFailuresSta
 			return <li key={key} className="buildResult">
 				{buildLink} {formatDate(build.date)},{" "}
 				<span className="buildResultString">{build.resultString()}</span> {" "}
+				{failureDisplay ? linkJenkins(this.props.lane, this.props.build) : null}
 				{failureDisplay}
 			</li>
 		} else {
@@ -468,6 +470,12 @@ function linkPr(build: Build, title:boolean = false) {
 	} else {
 		return null
 	}
+}
+
+function linkJenkins(lane: Lane<Build>, build: Build) {
+	let title = "Test results on Jenkins"
+	let url = jenkinsBuildBaseUrl(lane.tag, build.id) + "/testReport"
+	return <span>(<A href={url} title={title}>Failures</A>)</span>
 }
 
 let ContentArea = React.createClass({
@@ -506,7 +514,7 @@ let ContentArea = React.createClass({
 							dateRange.add(build.date) // Side effects in a map? Ew
 
 							let linkLabel = "Build " + build.id
-							return <BuildFailures build={build} key={build.id} linkLabel={linkLabel} extraLabel={linkPr(build)}/>
+							return <BuildFailures lane={lane} build={build} key={build.id} linkLabel={linkLabel} extraLabel={linkPr(build)}/>
 						})
 
 						return <div className="verboseLane" key={lane.tag}>
@@ -574,7 +582,7 @@ let ContentArea = React.createClass({
 							if (build.pr && !extra)
 								extra = linkPr(build)
 
-							return <BuildFailures build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} />
+							return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} />
 						})
 
 						return <div className="verboseBuild" key={buildKey}>
