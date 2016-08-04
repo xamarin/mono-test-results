@@ -287,6 +287,19 @@ class FailureListing extends Listing {
 	}
 }
 
+function buildFailure(failure: Failure) {
+	return failure.step && (startsWith(failure.step, "./autogen.sh") || failure.step == "make -w V=1")
+}
+
+// Return true if all failures are build failures
+function anyNonBuildFailures(build: Build) {
+	for(let failure of build.failures) {
+		if (!buildFailure(failure))
+			return true
+	}
+	return false
+}
+
 // Presentation
 
 let loadingIcon = <span><Icon src="images/loading.gif" /> Loading...</span>
@@ -444,10 +457,14 @@ class BuildFailures extends React.Component<BuildFailuresProps, BuildFailuresSta
 			else if (build.babysitterStatus.failed)
 				failureDisplay = <i className="noLoad">(Test data did not load)</i>
 
+			let linkJenkinsDisplay = anyNonBuildFailures(this.props.build) ?
+					linkJenkins(this.props.lane, this.props.build) :
+					null
+
 			return <li key={key} className="buildResult">
 				{buildLink} {formatDate(build.date)},{" "}
 				<span className="buildResultString">{build.resultString()}</span> {" "}
-				{failureDisplay ? linkJenkins(this.props.lane, this.props.build) : null}
+				{linkJenkinsDisplay}
 				{failureDisplay}
 			</li>
 		} else {
@@ -626,6 +643,9 @@ let ContentArea = React.createClass({
 							uniqueBuilds[build.id] = true
 
 							for (let failure of build.failures) {
+								if (buildFailure(failure))
+									continue
+
 								let failureKey = failure.key()
 								let failureListing = getOrDefault(failureListings, failureKey,
 									() => new FailureListing(failure))
