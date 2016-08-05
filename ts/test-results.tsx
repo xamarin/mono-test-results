@@ -92,7 +92,7 @@ class Build extends BuildBase {
 		for (let json of jsons) {
 			if (json.final_code) {
 				let resolved = false
-				if (json.babysitter_protocol) {
+				if (json.babysitter_protocol || json.loaded_xml) {
 					for(let testName in json.tests) {
 						let failure = new Failure(json.invocation, testName)
 						let test = json.tests[testName]
