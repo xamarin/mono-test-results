@@ -51,6 +51,7 @@ class Failure {
 class Build extends BuildBase {
 	date: Date
 	result: string
+	building: boolean
 	failures: Failure[]
 	pr: string
 	prUrl: string
@@ -66,6 +67,7 @@ class Build extends BuildBase {
 
 		this.date = new Date(+json.timestamp)
 		this.result = json.result
+		this.building = json.building
 
 		if (json.actions && json.actions.length && json.actions[0].parameters) {
 			for (let param of json.actions[0].parameters) {
@@ -115,8 +117,16 @@ class Build extends BuildBase {
 		}
 	}
 
+	inProgress() {
+		return this.building || !this.result
+	}
+
 	resultString() {
-		return this.result ? this.result : "(In progress)"
+		if (!this.result)
+			return "(In progress)"
+		if (this.inProgress())
+			return "(Uploading)"
+		return this.result
 	}
 }
 
@@ -512,7 +522,7 @@ let ContentArea = React.createClass({
 						let readyBuilds = loadedBuilds.filter(buildInTimespan)
 
 						if (inProgressVisible.value == Visibility.Hide)
-							readyBuilds = readyBuilds.filter(build => build.result != null)
+							readyBuilds = readyBuilds.filter(build => !build.inProgress())
 						if (testFilter) {
 							readyBuilds = readyBuilds.filter(build => testFilter.match(build))
 
@@ -564,7 +574,7 @@ let ContentArea = React.createClass({
 
 							if (build.failures.length)
 								buildListing.failedLanes++
-							if (build.result == null)
+							if (build.inProgress())
 								buildListing.inProgressLanes++
 
 							dateRange.add(build.date)
@@ -635,7 +645,7 @@ let ContentArea = React.createClass({
 
 					for (let lane of readyLanes) {
 						for (let build of lane.builds()) {
-							if (build.result == null || !buildInTimespan(build))
+							if (build.inProgress() || !buildInTimespan(build))
 								continue
 
 							trials++

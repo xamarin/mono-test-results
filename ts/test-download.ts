@@ -103,7 +103,7 @@ function jenkinsBuildBaseUrl(lane:string, id:string) {
 }
 
 function jenkinsBuildUrl(lane:string, id:string) {
-	return jenkinsBuildBaseUrl(lane, id) + "/api/json?tree=actions[individualBlobs[*],parameters[*]],timestamp,result"
+	return jenkinsBuildBaseUrl(lane, id) + "/api/json?tree=actions[individualBlobs[*],parameters[*]],timestamp,building,result"
 }
 
 function jenkinsBabysitterLegacyUrl(lane:string, id:string) {
@@ -278,7 +278,7 @@ class Lane<B extends BuildBase> {
 					fetchData("metadata", jenkinsBuildUrl(this.tag, build.id), build.metadataStatus,
 						(result:string) => {
 							let json = JSON.parse(result)
-							build.complete = !!json.result
+							build.complete = !json.building && !!json.result
 							build.interpretMetadata(json)
 
 							// Do this pretty late, so reloads look nice.
