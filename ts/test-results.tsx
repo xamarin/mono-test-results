@@ -111,6 +111,8 @@ class Build extends BuildBase {
 				}
 				if (!resolved) {
 					let failure = new Failure(json.invocation)
+					if (json.final_code == "124")
+						failure.kind = FailureKind.Hang
 					this.failures.push(failure)
 				}
 			}
