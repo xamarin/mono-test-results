@@ -9,7 +9,7 @@
 // Constants
 
 const maxBuildQueries = 50
-const maxCacheSize = 5000000 // Limit 5 MB
+const maxCacheSize = 5000000 - 1024 // Limit 10 MB minus some headroom
 const cachePrefix = "cache!"
 
 const localStorageVersion = "0"
@@ -45,33 +45,44 @@ class DeletionQueueItem {
 
 let deletionQueue = new PriorityQueue( (a,b) => b.date - a.date )
 
+// Add an item to the in-memory list of deletables.
 function deletionQueueEnq(date:number, id:string) {
 	deletionQueue.enq(new DeletionQueueItem(date, id))
 }
 
+// Add an item to the in-memory and localstorage lists of deletables.
 function deletionQueueRegister(date:number, id:string) {
-	localStorageSetItem(cachePrefix + id + "!timestamp", String(date))
-	deletionQueueEnq(date, id)
+	let timestampKey = cachePrefix + id + "!timestamp"
+	if (!localStorage.getItem(timestampKey)) {
+		localStorageSetItem(timestampKey, String(date))
+		deletionQueueEnq(date, id)
+	}
 }
 
-function localStorageWhittle(downTo: number) {
+// Given a target size and a timestamp, delete items older than that timestamp until that target size is reached)
+function localStorageWhittle(downTo: number, date: number) {
 	while (localStorageUsage() > downTo) {
-		let target:string
+		let target:DeletionQueueItem
 		try {
-			target = deletionQueue.deq().id
-		} catch (_) { // throws Error on queue empty
-			console.log("Warning: local storage usage exceeds limit, but no clearable data")
-			return
+			target = deletionQueue.peek()
+		} catch (e) { // throws Error on queue empty
+			console.warn("Warning: local storage usage is recorded at "+localStorageUsage()+", which must be lowered to "+downTo+" to make way for new data. However, the record must be wrong, because the clearable data list is empty (" + e + ")")
+			return false
 		}
 
-		localStorageClear(cachePrefix + target)
+		if (date <= target.date) {
+			console.log("Tried to lower localstorage cache to goal "+downTo+", but the oldest item in the cache ("+target.date+") is no older than the replacement one ("+date+"), so cancelled.")
+			return false
+		}
 
-		// PRs will tend to consist of several builds w/ same ID and timestamp.
-		while((<DeletionQueueItem>deletionQueue.peek()).id == target)
-			deletionQueue.deq()
+		// Target is appropriate to delete
+		deletionQueue.deq()
+		localStorageClear(cachePrefix + target.id)
 
-		console.log("Clearing space in localstorage cache: Forgot build", target, "local storage now", localStorageUsage())
+		console.log("Clearing space in localstorage cache (goal "+downTo+"): Forgot build", target.id, "local storage now", localStorageUsage())
 	}
+
+	return true
 }
 
 // Build deletion queue from initial cache contents
@@ -83,7 +94,7 @@ function localStorageWhittle(downTo: number) {
 		if (!match)
 			continue
 		let id = match[1]
-		let date = +localStorage.getItem(key)
+		let date = toNumber(localStorage.getItem(key))
 		deletionQueueEnq(date, id)
 	}
 }
@@ -220,6 +231,7 @@ class Lane<B extends BuildBase> {
 			this.buildsRemaining = Math.min(laneResult.builds.length, maxBuildQueries)
 			for (let buildInfo of laneResult.builds) {
 				let buildId = String(buildInfo.number)
+				let timestamp:number = null // FIXME: This stores shared state for closures below. This is confusing and brittle.
 
 				if (this.buildMap[buildId] && this.buildMap[buildId].complete) {
 					this.buildsRemaining--
@@ -256,15 +268,23 @@ class Lane<B extends BuildBase> {
 							try {
 								mayStore = success(fetchResult)
 							} catch (e) {
-								console.log("Failed to interpret result of url:", url, "exception:", e)
+								console.warn("Failed to interpret result of url:", url, "exception:", e)
 								status.failed = true
 							}
 
 							invalidateUi()
-							if (!status.failed && mayStore)
-								localStorageSetItem(storageKey, LZString.compress(fetchResult))
+							if (!status.failed && mayStore && timestamp != null) {
+								let compressed = LZString.compress(fetchResult)
+
+								// Ensure adequate space in local storage
+								let spaceAvailable = localStorageWhittle(maxCacheSize - compressed.length, timestamp)
+
+								// Write into local storage
+								if (spaceAvailable) // FIXME: Even if we choose not to write data, the timestamp is still saved
+									localStorageSetItem(storageKey, compressed)
+							}
 						}, "text").fail((xhr) => {
-							console.log("Failed to load url for lane", url, "error", xhr.status);
+							console.warn("Failed to load url for lane", url, "error", xhr.status);
 
 							if (failure(xhr.status)) {
 								status.loaded = true
@@ -286,10 +306,9 @@ class Lane<B extends BuildBase> {
 
 							// If metadata received and build is finished,
 							if (build.complete) {
-								let timestamp = json.timestamp
+								timestamp = toNumber(json.timestamp) // In practice already a number, but make sure
 
 								// Manage cache size
-								localStorageWhittle(maxCacheSize - result.length)
 								deletionQueueRegister(timestamp, buildTag)
 
 								// 404s (but not other failure modes) are treated as permanent and cached
@@ -339,7 +358,7 @@ class Lane<B extends BuildBase> {
 
 			invalidateUi()
 		}).fail(() => {
-            console.log("Failed to load url for lane", this.apiUrl);
+            console.warn("Failed to load url for lane", this.apiUrl);
 			this.status.loaded = true
 			this.status.failed = true
 			invalidateUi()

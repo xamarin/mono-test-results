@@ -22,6 +22,14 @@ function isNumberChar(str:string) {
 	return numTest.test(str)
 }
 
+// Assume NaNs and infinities indicate an error somewhere
+function toNumber(str: string) {
+	let n = +str
+	if (!isFinite(n))
+		throw new Error("Converted non-numeric string to number: " + str)
+	return n
+}
+
 // Typescript ops
 
 function enumStringKeys(e) {
@@ -102,7 +110,7 @@ const localStoragePrefix = "testresults!"
 
 function localStorageUsageDelta(delta:number) {
 	let usageKey = localStoragePrefix + "usage"
-	let usage = +localStorage.getItem(usageKey)
+	let usage = toNumber(localStorage.getItem(usageKey))
 	usage += delta
 	localStorage.setItem(usageKey, String(usage))
 }
@@ -124,7 +132,7 @@ function localStorageGetItem(key:string) {
 function localStorageUsage() {
 	let usageKey = localStoragePrefix + "usage"
 	let usage = localStorage.getItem(usageKey)
-	return +usage + (usage != null ? usageKey.length + usage.length : 0)
+	return toNumber(usage) + (usage != null ? usageKey.length + usage.length : 0)
 }
 
 function jsonLines(str:String) : any[] {
