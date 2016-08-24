@@ -299,8 +299,13 @@ class FailureListing extends Listing {
 	}
 }
 
+let isMakeLine = /make (?:-j\d+ )?-w V=1/
+
 function buildFailure(failure: Failure) {
-	return failure.step && (startsWith(failure.step, "./autogen.sh") || failure.step == "make -w V=1")
+	return failure.step && (
+		   startsWith(failure.step, "./autogen.sh")
+		|| isMakeLine.test( failure.step )
+	)
 }
 
 // Return true if all failures are build failures
