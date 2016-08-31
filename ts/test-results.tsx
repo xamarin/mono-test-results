@@ -48,6 +48,42 @@ class Failure {
 	}
 }
 
+class MassFailure {
+	constructor(public limit: number, public exampleFailure:Failure) {}
+}
+
+class MassFailureTracker {
+	count:number
+	massFailure: MassFailure
+
+	constructor(massFailure: MassFailure) {
+		this.count = 0
+		this.massFailure = massFailure
+	}
+
+	feed(failure: Failure) {
+		let targetFailure = this.massFailure.exampleFailure
+		if (targetFailure.step == failure.step &&
+			(!targetFailure.test || targetFailure.test == failure.test))
+			this.count++
+	}
+
+	excess() {
+		return this.count >= this.massFailure.limit
+	}
+}
+
+// Here is a list of test suites which tend to fail all at once, and spuriously.
+// For example if the X server dies, or the disk runs out of space, the result
+// will be hundreds of failures of no informational value in the relevant suite.
+let massFailures = [
+	new MassFailure(1300,
+		new Failure("make -w -C mcs/class/System.Windows.Forms run-test")
+	)
+]
+
+// Load
+
 class Build extends BuildBase {
 	date: Date
 	result: string
@@ -56,10 +92,12 @@ class Build extends BuildBase {
 	pr: string
 	prUrl: string
 	prTitle: string
+	massFailureTrackers: MassFailureTracker[]
 
 	constructor(laneTag: string, id: string) {
 		super(laneTag, id)
 		this.failures = []
+		this.massFailureTrackers = massFailures.map(f => new MassFailureTracker(f))
 	}
 
 	interpretMetadata(json) {
@@ -107,6 +145,9 @@ class Build extends BuildBase {
 
 						this.failures.push(failure)
 						resolved = true
+
+						for (let tracker of this.massFailureTrackers)
+							tracker.feed(failure)
 					}
 				}
 				if (!resolved) {
@@ -117,6 +158,10 @@ class Build extends BuildBase {
 				}
 			}
 		}
+	}
+
+	massFailed() {
+		return this.massFailureTrackers.some(tracker => tracker.excess())
 	}
 
 	inProgress() {
@@ -156,6 +201,7 @@ enum DisplaySpan {
 
 class ChoiceVisibility extends Choice<Visibility> {}
 let prVisible = new Ref(Visibility.Hide)
+let massFailVisible = new Ref(Visibility.Show)
 let inProgressVisible = new Ref(Visibility.Hide)
 
 class ChoiceGroupBy extends Choice<GroupBy> {}
@@ -527,6 +573,8 @@ let ContentArea = React.createClass({
 
 						if (inProgressVisible.value == Visibility.Hide)
 							readyBuilds = readyBuilds.filter(build => !build.inProgress())
+						if (massFailVisible.value == Visibility.Hide)
+							readyBuilds = readyBuilds.filter(build => !build.massFailed())
 						if (testFilter) {
 							readyBuilds = readyBuilds.filter(build => testFilter.match(build))
 
@@ -569,6 +617,8 @@ let ContentArea = React.createClass({
 					for (let lane of readyLanes) {
 						for (let build of lane.builds()) {
 							if (!buildInTimespan(build))
+								continue
+							if (massFailVisible.value == Visibility.Hide && build.massFailed())
 								continue
 							if (testFilter && !testFilter.match(build))
 								continue
@@ -651,6 +701,8 @@ let ContentArea = React.createClass({
 						for (let build of lane.builds()) {
 							if (build.inProgress() || !buildInTimespan(build))
 								continue
+							if (massFailVisible.value == Visibility.Hide && build.massFailed())
+								continue
 
 							trials++
 							dateRange.add(build.date)
@@ -724,7 +776,8 @@ function render() {
 			Timespan: <ChoiceDisplaySpan enum={DisplaySpan} data={displaySpan} value={displaySpan.value} />
 			<br />
 			Filters:
-			PRs <ChoiceVisibility enum={Visibility} data={prVisible} value={prVisible.value} />
+			PRs <ChoiceVisibility enum={Visibility} data={prVisible} value={prVisible.value} /> {" "} | {" "}
+			Mass-fails <ChoiceVisibility enum={Visibility} data={massFailVisible} value={massFailVisible.value} />
 			{inProgressChoice}
 			<TestFilterDisplay />
 		</div>
