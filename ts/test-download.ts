@@ -34,13 +34,7 @@ if (localStorageGetItem("version") != localStorageVersion) {
 }
 
 class DeletionQueueItem {
-	date: number
-	id: string
-
-	constructor(date: number, id: string) {
-		this.date = date
-		this.id = id
-	}
+	constructor(public date: number, public id: string) {}
 }
 
 let deletionQueue = new PriorityQueue( (a,b) => b.date - a.date )

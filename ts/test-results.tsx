@@ -167,10 +167,7 @@ let displaySpan = new Ref(DisplaySpan.Last48Hr)
 // Test filters
 
 class TestFilter {
-	failure: Failure
-	constructor(failure:Failure) {
-		this.failure = failure
-	}
+	constructor(public failure: Failure) {}
 
 	match(build: Build) : boolean {
 		for (let failure of build.failures) {
