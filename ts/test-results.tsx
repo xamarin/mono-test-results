@@ -1,6 +1,8 @@
 /// <reference path="./test-download.ts" />
 /// <reference path="./helper-react.tsx" />
 
+ReactDOM.render(<div>TODO</div>, document.getElementById('content'))
+
 // Constants
 
 const max_failures_unexpanded = 5
@@ -759,8 +761,7 @@ let ContentArea = React.createClass({
 	}
 })
 
-let needRender = false
-function render() {
+registerRender( () => {
 	let inProgressChoice = groupBy.value != GroupBy.Failures ?
 		<span>{" "}|{" "}
 			In progress <ChoiceVisibility enum={Visibility} data={inProgressVisible} value={inProgressVisible.value} />
@@ -786,14 +787,5 @@ function render() {
 		<hr className="sectionDivider" />
 		<ContentArea />
 	</div>, document.getElementById('content'))
-	needRender = false
-}
-function tryRender() {
-	if (needRender)
-		render()
-}
-function invalidateUi() {
-	needRender = true
-	setTimeout(tryRender, 0)
-}
+})
 render()

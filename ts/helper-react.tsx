@@ -109,3 +109,24 @@ class Choice<Key> extends React.Component<ChoiceProps<Key>, {}> {
 		return <span className="choice">{children}</span>
 	}
 }
+
+// Display refresh
+
+let needRender = false
+let renderCallback: ()=>void = null
+function registerRender(callback: ()=>void) {
+	renderCallback = callback
+}
+function render() {
+	if (renderCallback)
+		renderCallback()
+	needRender = false
+}
+function tryRender() {
+	if (needRender)
+		render()
+}
+function invalidateUi() {
+	needRender = true
+	setTimeout(tryRender, 0)
+}
