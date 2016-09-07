@@ -84,9 +84,6 @@ let massFailures = [
 	)
 ]
 
-let yes = {}
-let no = {}
-
 // Load
 class Build extends BuildBase {
 	date: Date
@@ -140,7 +137,7 @@ class Build extends BuildBase {
 				} else if (action._class == "hudson.plugins.git.util.BuildData") {
 					// There will be one of these for the standards suite repo and one of these for the "real" git repo
 					if (action.lastBuiltRevision && action.remoteUrls && action.remoteUrls[0] == gitRepo) {
-						this.gitHash = action.lastBuiltRevision.SHA1
+						gitHash = action.lastBuiltRevision.SHA1
 					}
 				}
 			}
@@ -206,6 +203,10 @@ class Build extends BuildBase {
 		if (this.pr)
 			return this.pr+this.gitHash
 		return this.gitHash
+	}
+
+	gitDisplay() {
+		return this.gitHash.slice(0,6)
 	}
 
 	url() {
@@ -573,18 +574,10 @@ class BuildFailures extends React.Component<BuildFailuresProps, BuildFailuresSta
 	}
 }
 
-function linkPr(build: Build, title:boolean = false) {
-	if (build.pr) {
-		let titleDisplay = title ?
-			[
-				<span> </span>,
-				<span className="prTitle">"{build.prTitle}"</span>
-			] :
-			null
-		return <span className="prLink">(<A href={build.prUrl} title={build.prTitle}>PR {build.pr}</A>{titleDisplay})</span>
-	} else {
-		return null
-	}
+function linkFor(build: Build, parens=true) {
+	let title = build.prTitle ? build.prTitle : build.gitHash
+	let display = build.pr ? `PR ${build.pr}` :  (parens?"":"Commit ") + build.gitDisplay()
+	return <span className="sourceLink">{parens?"(":""}<A href={build.url()} title={title}>{display}</A>{parens?")":""}</span>
 }
 
 function linkJenkins(lane: Lane<Build>, build: Build) {
@@ -631,7 +624,7 @@ let ContentArea = React.createClass({
 							dateRange.add(build.date) // Side effects in a map? Ew
 
 							let linkLabel = "Build " + build.id
-							return <BuildFailures lane={lane} build={build} key={build.id} linkLabel={linkLabel} extraLabel={linkPr(build)}/>
+							return <BuildFailures lane={lane} build={build} key={build.id} linkLabel={linkLabel} extraLabel={linkFor(build)}/>
 						})
 
 						return <div className="verboseLane" key={lane.tag}>
@@ -661,7 +654,7 @@ let ContentArea = React.createClass({
 							if (testFilter && !testFilter.match(build))
 								continue
 
-							let buildListing = getOrDefault(buildListings, build.id,
+							let buildListing = getOrDefault(buildListings, build.buildTag(),
 									() => new BuildListing())
 
 							if (build.failures.length)
@@ -698,14 +691,17 @@ let ContentArea = React.createClass({
 							let build = buildListing.lanes[laneIdx]
 							let lane = lanes[laneIdx]
 
-							if (build.pr && !extra)
-								extra = linkPr(build)
+							if (!extra)
+								extra = linkFor(build, false)
 
 							return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} />
 						})
 
+						if (!extra)
+							extra = <span>Unknown</span>
+
 						return <div className="verboseBuild" key={buildKey}>
-							<b>Build {buildKey}</b> {extra}
+							<b>{extra}</b>
 							<ul>
 								{laneDisplay}
 							</ul>
@@ -744,7 +740,7 @@ let ContentArea = React.createClass({
 
 							trials++
 							dateRange.add(build.date)
-							uniqueBuilds[build.id] = true
+							uniqueBuilds[build.buildTag()] = true
 
 							for (let failure of build.failures) {
 								if (buildFailure(failure))
