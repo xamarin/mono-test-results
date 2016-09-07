@@ -84,22 +84,27 @@ let massFailures = [
 	)
 ]
 
-// Load
+let yes = {}
+let no = {}
 
+// Load
 class Build extends BuildBase {
 	date: Date
 	result: string
 	building: boolean
 	failures: Failure[]
+	gitHash: string
 	pr: string
 	prUrl: string
 	prTitle: string
 	massFailureTrackers: MassFailureTracker[]
+	laneTagTemp: string // REMOVE ME
 
 	constructor(laneTag: string, id: string) {
 		super(laneTag, id)
 		this.failures = []
 		this.massFailureTrackers = massFailures.map(f => new MassFailureTracker(f))
+		this.laneTagTemp = laneTag
 	}
 
 	interpretMetadata(json) {
@@ -109,22 +114,41 @@ class Build extends BuildBase {
 		this.result = json.result
 		this.building = json.building
 
-		if (json.actions && json.actions.length && json.actions[0].parameters) {
-			for (let param of json.actions[0].parameters) {
-				switch (param.name) {
-					case "ghprbPullId":
-						this.pr = param.value
-						break
-					case "ghprbPullLink":
-						this.prUrl = param.value
-						break
-					case "ghprbPullTitle":
-						this.prTitle = param.value
-						break
-					default: break
+		let prHash:string = null
+		let gitHash:string = null
+
+		if (json.actions && json.actions.length) {
+			for (let action of json.actions) {
+				if (action._class == "hudson.model.ParametersAction" && action.parameters) {
+					for (let param of action.parameters) {
+						switch (param.name) {
+							case "ghprbPullId":
+								this.pr = param.value
+								break
+							case "ghprbPullLink":
+								this.prUrl = param.value
+								break
+							case "ghprbPullTitle":
+								this.prTitle = param.value
+								break
+							case "ghprbActualCommit":
+								prHash = param.value
+								break
+							default: break
+						}
+					}
+				} else if (action._class == "hudson.plugins.git.util.BuildData") {
+					// There will be one of these for the standards suite repo and one of these for the "real" git repo
+					if (action.lastBuiltRevision && action.remoteUrls && action.remoteUrls[0] == gitRepo) {
+						this.gitHash = action.lastBuiltRevision.SHA1
+					}
 				}
 			}
 		}
+
+		// In a PR branch, the ghprbActualCommit represents the commit that triggered the build,
+		// and the last built revision is some temporary thing that half the time isn't even reported.
+		this.gitHash = prHash ? prHash : gitHash
 	}
 
 	// See scripts/ci/babysitter in mono repo for json format
@@ -176,6 +200,18 @@ class Build extends BuildBase {
 		if (this.inProgress())
 			return "(Uploading)"
 		return this.result
+	}
+
+	buildTag() {
+		if (this.pr)
+			return this.pr+this.gitHash
+		return this.gitHash
+	}
+
+	url() {
+		if (this.prUrl)
+			return this.prUrl
+		return "https://github.com/mono/mono/commit/" + this.gitHash
 	}
 }
 

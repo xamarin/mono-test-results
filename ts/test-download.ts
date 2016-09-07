@@ -12,7 +12,7 @@ const maxBuildQueries = 50
 const maxCacheSize = 5000000 - 1024 // Limit 10 MB minus some headroom
 const cachePrefix = "cache!"
 
-const localStorageVersion = "0"
+const localStorageVersion = "1"
 const localStorageCompressMode = "LZString"
 
 // Types
@@ -108,7 +108,7 @@ function jenkinsBuildBaseUrl(lane:string, id:string) {
 }
 
 function jenkinsBuildUrl(lane:string, id:string) {
-	return jenkinsBuildBaseUrl(lane, id) + "/api/json?tree=actions[individualBlobs[*],parameters[*]],timestamp,building,result"
+	return jenkinsBuildBaseUrl(lane, id) + "/api/json?tree=actions[individualBlobs[*],parameters[*],lastBuiltRevision[*],remoteUrls[*]],timestamp,building,result"
 }
 
 function jenkinsBabysitterLegacyUrl(lane:string, id:string) {
@@ -132,6 +132,9 @@ let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 //	["Windows Intel32", "z/label=w32",                                      "w"],
 //	["Windows Intel64", "z/label=w64",                                      "x"]
 ]
+
+// Repo we expect our hashes to correspond to
+let gitRepo = "git://github.com/mono/mono.git"
 
 // Download support
 
