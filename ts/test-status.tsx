@@ -37,9 +37,22 @@ class BuildStatus extends React.Component<BuildStatusProps, {}> {
 			}
 
 			let buildLink = <span><A href={build.displayUrl} title={null}>{statusLanes[lane].name}</A> (build {build.id})</span>
+			let className = ""
+
+			switch(build.result) {
+				case "UNSTABLE":
+					className = "warning"
+					break
+				case "SUCCESS":
+					className = "ok"
+					break
+				default:
+					className = "failure"
+					break
+			}
 
 			displayList.push(
-				<li key={lane} className="buildResult">
+				<li key={lane} className={className}>
 					{buildLink} {formatDate(build.date)},{" "}
 					<span className="buildResultString">{build.resultString()}</span>
 				</li>
@@ -122,7 +135,9 @@ let StatusArea = React.createClass({
 
 registerRender( () => {
 	ReactDOM.render(<div>
-		<div className="pageTitle">Quick status</div>
+		<div>
+			<span className="pageTitle">Quick status</span> | See also: <A href="failures.html" title={null}>Build failures</A>
+		</div>
 		<StatusArea />
 	</div>, document.getElementById('content'))
 })

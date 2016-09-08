@@ -47,12 +47,22 @@ li.loading {
 
 /* Image known size is 16px */
 li.failure {
-	list-style-type: none;
 	background: url('images/error.png') no-repeat left top;
+}
+li.warning {
+	background: url('images/warning.png') no-repeat left top;
+}
+li.ok {
+	background: url('images/ok.png') no-repeat left top;
+}
+li.failure, li.warning, li.ok {
+	list-style-type: none;
 	margin-left:-20px;
 	padding-left: 20px;
 	background-size: 16px 16px;
 }
+
+
 
 li.failureExpand {
 	list-style-type:none;
