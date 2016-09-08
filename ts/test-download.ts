@@ -64,7 +64,7 @@ function localStorageWhittle(downTo: number, date: number) {
 			return false
 		}
 
-		if (date <= target.date) {
+		if (date <= target.date) { // FIXME: This is ridiculously unlikely, and if we hit it something else is probably wrong.
 			console.log("Tried to lower localstorage cache to goal "+downTo+", but the oldest item in the cache ("+target.date+") is no older than the replacement one ("+date+"), so cancelled.")
 			return false
 		}
@@ -80,11 +80,12 @@ function localStorageWhittle(downTo: number, date: number) {
 }
 
 // Build deletion queue from initial cache contents
+// TODO: Also load these items as lanes
 {
-	let isTimestamp = new RegExp(localStoragePrefix + cachePrefix + "(\\d+)!timestamp")
+	let isTimestamp = new RegExp(localStoragePrefix + cachePrefix + "(?:\\d+)!(?:[^!]+)!timestamp")
 	for (let i = 0; i < localStorage.length; i++) {
 		let key = localStorage.key(i)
-		let match = isTimestamp.exec(key)
+		let match = isTimestamp.test(key)
 		if (!match)
 			continue
 		let id = match[1]
