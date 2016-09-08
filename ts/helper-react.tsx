@@ -110,6 +110,35 @@ class Choice<Key> extends React.Component<ChoiceProps<Key>, {}> {
 	}
 }
 
+// Date utils
+
+function formatDate(date: Date) {
+	let day = null
+	let now = new Date()
+	if (sameDay(now, date)) {
+		day = "Today"
+	} else {
+		let yesterday = new Date(+now - dayMs)
+		if (sameDay(yesterday, date))
+			day = "Yesterday"
+	}
+
+	if (day)
+		return <span className="datetime">{day} {date.toLocaleTimeString()}</span>
+	else
+		return <span className="datetime">{date.toLocaleString()}</span>
+}
+
+function formatRange(range: DateRange) {
+	if (!range.early || !range.late)
+		return <i>(Invalid date)</i>
+	return <span className="datetimeRange">{formatDate(range.early)} - {formatDate(range.late)}</span>
+}
+
+// Components
+
+let loadingIcon = <span><Icon src="images/loading.gif" /> Loading...</span>
+
 // Display refresh
 
 let needRender = false

@@ -1,8 +1,6 @@
 /// <reference path="./test-download.ts" />
 /// <reference path="./helper-react.tsx" />
 
-ReactDOM.render(<div>TODO</div>, document.getElementById('content'))
-
 // Constants
 
 const max_failures_unexpanded = 5
@@ -85,67 +83,20 @@ let massFailures = [
 ]
 
 // Load
-class Build extends BuildBase {
-	date: Date
-	result: string
-	building: boolean
+class Build extends BuildStandard {
 	failures: Failure[]
-	gitHash: string
-	pr: string
-	prUrl: string
-	prTitle: string
 	massFailureTrackers: MassFailureTracker[]
-	laneTagTemp: string // REMOVE ME
 
 	constructor(laneTag: string, id: string) {
 		super(laneTag, id)
 		this.failures = []
 		this.massFailureTrackers = massFailures.map(f => new MassFailureTracker(f))
-		this.laneTagTemp = laneTag
 	}
 
 	interpretMetadata(json) {
 		if ('debug' in options) console.log("Got metadata", json)
 
-		this.date = new Date(+json.timestamp)
-		this.result = json.result
-		this.building = json.building
-
-		let prHash:string = null
-		let gitHash:string = null
-
-		if (json.actions && json.actions.length) {
-			for (let action of json.actions) {
-				if (action._class == "hudson.model.ParametersAction" && action.parameters) {
-					for (let param of action.parameters) {
-						switch (param.name) {
-							case "ghprbPullId":
-								this.pr = param.value
-								break
-							case "ghprbPullLink":
-								this.prUrl = param.value
-								break
-							case "ghprbPullTitle":
-								this.prTitle = param.value
-								break
-							case "ghprbActualCommit":
-								prHash = param.value
-								break
-							default: break
-						}
-					}
-				} else if (action._class == "hudson.plugins.git.util.BuildData") {
-					// There will be one of these for the standards suite repo and one of these for the "real" git repo
-					if (action.lastBuiltRevision && action.remoteUrls && action.remoteUrls[0] == gitRepo) {
-						gitHash = action.lastBuiltRevision.SHA1
-					}
-				}
-			}
-		}
-
-		// In a PR branch, the ghprbActualCommit represents the commit that triggered the build,
-		// and the last built revision is some temporary thing that half the time isn't even reported.
-		this.gitHash = prHash ? prHash : gitHash
+		super.interpretMetadata(json)
 	}
 
 	// See scripts/ci/babysitter in mono repo for json format
@@ -185,34 +136,6 @@ class Build extends BuildBase {
 
 	massFailed() {
 		return this.massFailureTrackers.some(tracker => tracker.excess())
-	}
-
-	inProgress() {
-		return this.building || !this.result
-	}
-
-	resultString() {
-		if (!this.result)
-			return "(In progress)"
-		if (this.inProgress())
-			return "(Uploading)"
-		return this.result
-	}
-
-	buildTag() {
-		if (this.pr)
-			return this.pr+this.gitHash
-		return this.gitHash
-	}
-
-	gitDisplay() {
-		return this.gitHash.slice(0,6)
-	}
-
-	url() {
-		if (this.prUrl)
-			return this.prUrl
-		return "https://github.com/mono/mono/commit/" + this.gitHash
 	}
 }
 
@@ -280,43 +203,6 @@ function filterLanes() {
 	)
 }
 
-function formatDate(date: Date) {
-	let day = null
-	let now = new Date()
-	if (sameDay(now, date)) {
-		day = "Today"
-	} else {
-		let yesterday = new Date(+now - dayMs)
-		if (sameDay(yesterday, date))
-			day = "Yesterday"
-	}
-
-	if (day)
-		return <span className="datetime">{day} {date.toLocaleTimeString()}</span>
-	else
-		return <span className="datetime">{date.toLocaleString()}</span>
-}
-
-class DateRange {
-	early:Date
-	late:Date
-
-	add(date: Date) {
-		if (!date)
-			return
-		if (!this.early || date < this.early)
-			this.early = date
-		if (!this.late || date > this.late)
-			this.late = date
-	}
-}
-
-function formatRange(range: DateRange) {
-	if (!range.early || !range.late)
-		return <i>(Invalid date)</i>
-	return <span className="datetimeRange">{formatDate(range.early)} - {formatDate(range.late)}</span>
-}
-
 function buildInTimespan(build: Build) {
 	let cutoff: number // In days
 	switch (displaySpan.value) {
@@ -344,14 +230,6 @@ function currentlyLoading() {
 }
 
 // Listing containers
-
-class Listing {
-	dateRange: DateRange
-
-	constructor() {
-		this.dateRange = new DateRange()
-	}
-}
 
 class BuildListing extends Listing {
 	failedLanes: number
@@ -400,8 +278,6 @@ function anyNonBuildFailures(build: Build) {
 }
 
 // Presentation
-
-let loadingIcon = <span><Icon src="images/loading.gif" /> Loading...</span>
 
 let LoadingBox = React.createClass({
 	render: function() {
@@ -577,7 +453,7 @@ class BuildFailures extends React.Component<BuildFailuresProps, BuildFailuresSta
 function linkFor(build: Build, parens=true) {
 	let title = build.prTitle ? build.prTitle : build.gitHash
 	let display = build.pr ? `PR ${build.pr}` :  (parens?"":"Commit ") + build.gitDisplay()
-	return <span className="sourceLink">{parens?"(":""}<A href={build.url()} title={title}>{display}</A>{parens?")":""}</span>
+	return <span className="sourceLink">{parens?"(":""}<A href={build.gitUrl()} title={title}>{display}</A>{parens?")":""}</span>
 }
 
 function linkJenkins(lane: Lane<Build>, build: Build) {
@@ -678,13 +554,7 @@ let ContentArea = React.createClass({
 						buildListings = filteredBuildListings
 					}
 
-					let buildDisplay = Object.keys(buildListings).sort(
-							(a:string,b:string) => { // Sort by date
-								let ad = buildListings[a].dateRange.late
-								let bd = buildListings[b].dateRange.late
-								return ((+bd) - (+ad))
-							}
-						).map(buildKey => {
+					let buildDisplay = Object.keys(buildListings).sort(dateRangeLaterCmpFor(buildListings)).map(buildKey => {
 						let extra: JSX.Element = null
 						let buildListing = buildListings[buildKey]
 						let laneDisplay = Object.keys(buildListing.lanes).sort(numericSort).map(laneIdx => {

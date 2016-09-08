@@ -8,12 +8,15 @@
 
 // Constants
 
-const maxBuildQueries = 50
+const defaultMaxBuildQueries = 50
 const maxCacheSize = 5000000 - 1024 // Limit 10 MB minus some headroom
 const cachePrefix = "cache!"
 
 const localStorageVersion = "1"
 const localStorageCompressMode = "LZString"
+
+declare var overloadMaxBuildQueries : number
+function maxBuildQueries() { return typeof overloadMaxBuildQueries !== 'undefined' ? overloadMaxBuildQueries : defaultMaxBuildQueries }
 
 // Types
 
@@ -226,7 +229,7 @@ class Lane<B extends BuildBase> {
 			if ('debug' in options) console.log("lane loaded url", this.apiUrl, "result:", laneResult)
 			let queries = 0
 
-			this.buildsRemaining = Math.min(laneResult.builds.length, maxBuildQueries)
+			this.buildsRemaining = Math.min(laneResult.builds.length, maxBuildQueries())
 			for (let buildInfo of laneResult.builds) {
 				let buildId = String(buildInfo.number)
 				let timestamp:number = null // FIXME: This stores shared state for closures below. This is confusing and brittle.
@@ -350,7 +353,7 @@ class Lane<B extends BuildBase> {
 				}
 
 				queries++
-				if (queries >= maxBuildQueries)
+				if (queries >= maxBuildQueries())
 					break
 			}
 
@@ -384,4 +387,85 @@ function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 	}
 
 	return lanes
+}
+
+// Minimal build implementation
+class BuildStandard extends BuildBase {
+	date: Date
+	result: string
+	building: boolean
+	gitHash: string
+	pr: string
+	prUrl: string
+	prTitle: string
+
+	interpretMetadata(json) {
+		this.date = new Date(+json.timestamp)
+		this.result = json.result
+		this.building = json.building
+
+		let prHash:string = null
+		let gitHash:string = null
+
+		if (json.actions && json.actions.length) {
+			for (let action of json.actions) {
+				if (action._class == "hudson.model.ParametersAction" && action.parameters) {
+					for (let param of action.parameters) {
+						switch (param.name) {
+							case "ghprbPullId":
+								this.pr = param.value
+								break
+							case "ghprbPullLink":
+								this.prUrl = param.value
+								break
+							case "ghprbPullTitle":
+								this.prTitle = param.value
+								break
+							case "ghprbActualCommit":
+								prHash = param.value
+								break
+							default: break
+						}
+					}
+				} else if (action._class == "hudson.plugins.git.util.BuildData") {
+					// There will be one of these for the standards suite repo and one of these for the "real" git repo
+					if (action.lastBuiltRevision && action.remoteUrls && action.remoteUrls[0] == gitRepo) {
+						gitHash = action.lastBuiltRevision.SHA1
+					}
+				}
+			}
+		}
+
+		// In a PR branch, the ghprbActualCommit represents the commit that triggered the build,
+		// and the last built revision is some temporary thing that half the time isn't even reported.
+		this.gitHash = prHash ? prHash : gitHash
+	}
+
+	inProgress() {
+		return this.building || !this.result
+	}
+
+	resultString() {
+		if (!this.result)
+			return "(In progress)"
+		if (this.inProgress())
+			return "(Uploading)"
+		return this.result
+	}
+
+	buildTag() {
+		if (this.pr)
+			return this.pr+this.gitHash
+		return this.gitHash
+	}
+
+	gitDisplay() {
+		return this.gitHash.slice(0,6)
+	}
+
+	gitUrl() {
+		if (this.prUrl)
+			return this.prUrl
+		return "https://github.com/mono/mono/commit/" + this.gitHash
+	}
 }

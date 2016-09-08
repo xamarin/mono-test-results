@@ -85,6 +85,37 @@ function sameDay(a:Date, b:Date) {
 	return a.getFullYear() == b.getFullYear() && a.getMonth() == b.getMonth() && a.getDate() == b.getDate()
 }
 
+class DateRange {
+	early:Date
+	late:Date
+
+	add(date: Date) {
+		if (!date)
+			return
+		if (!this.early || date < this.early)
+			this.early = date
+		if (!this.late || date > this.late)
+			this.late = date
+	}
+}
+
+function dateRangeLaterCmpFor(buildListings) {
+	function dateRangeLaterCmp(a:string,b:string) { // Sort by date
+		let ad = buildListings[a].dateRange.late
+		let bd = buildListings[b].dateRange.late
+		return ((+bd) - (+ad))
+	}
+	return dateRangeLaterCmp
+}
+
+class Listing {
+	dateRange: DateRange
+
+	constructor() {
+		this.dateRange = new DateRange()
+	}
+}
+
 // Config -- Put debug options (put #! after URL) in options dict
 
 let options = {}
