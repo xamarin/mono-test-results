@@ -139,6 +139,39 @@ function formatRange(range: DateRange) {
 
 let loadingIcon = <span><Icon src="images/loading.gif" /> Loading...</span>
 
+let reloadControlEverLoaded = false
+
+function makeReloadControl<T extends BuildBase>(lanes: Lane<T>[], currentlyLoading: () => boolean) {
+	let ReloadControl = React.createClass({
+		render: function() {
+			let loading = currentlyLoading()
+
+			if (!reloadControlEverLoaded) { // Don't display before first load completes
+				if (loading)
+					return null
+				reloadControlEverLoaded = true
+			}
+
+			let reloadControl = <span><Icon src="images/reload.png" /> Reload</span>
+
+			if (!currentlyLoading())
+				reloadControl = <ClickableSpan key={null} handler={
+					e => {
+						for (let lane of lanes) {
+							lane.status = new Status()
+							lane.load()
+						}
+						invalidateUi()
+					}
+				}>{reloadControl}</ClickableSpan>
+
+			return <div className="reloadControl">{reloadControl}</div>
+		}
+	})
+	return ReloadControl
+}
+
+
 // Display refresh
 
 let needRender = false

@@ -71,6 +71,15 @@ class BuildStatus extends React.Component<BuildStatusProps, {}> {
 	}
 }
 
+function statusCurrentlyLoading() { // Slight redundancy with test-results
+	for (let lane of statusLanes)
+		if (!lane.status.loaded || lane.buildsRemaining > 0)
+			return true
+	return false
+}
+
+let StatusReloadControl = makeReloadControl(statusLanes, statusCurrentlyLoading)
+
 let StatusArea = React.createClass({
 	render: function() {
 		let readyLanes = statusLanes.filter(lane => lane.visible())
@@ -133,11 +142,11 @@ let StatusArea = React.createClass({
 	}
 })
 
-
 registerRender( () => {
 	ReactDOM.render(<div>
 		<div>
 			<span className="pageTitle">Quick status</span> | See also: <A href="failures.html" title={null}>Build failures</A>
+			<StatusReloadControl />
 		</div>
 		<StatusArea />
 	</div>, document.getElementById('content'))

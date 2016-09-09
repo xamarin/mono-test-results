@@ -288,34 +288,7 @@ let LoadingBox = React.createClass({
 	}
 })
 
-let everLoaded = false
-
-let ReloadControl = React.createClass({
-	render: function() {
-		let loading = currentlyLoading()
-
-		if (!everLoaded) { // Don't display before first load completes
-			if (loading)
-				return null
-			everLoaded = true
-		}
-
-		let reloadControl = <span><Icon src="images/reload.png" /> Reload</span>
-
-		if (!currentlyLoading())
-			reloadControl = <ClickableSpan key={null} handler={
-				e => {
-					for (let lane of lanes) {
-						lane.status = new Status()
-						lane.load()
-					}
-					invalidateUi()
-				}
-			}>{reloadControl}</ClickableSpan>
-
-		return <div className="reloadControl">{reloadControl}</div>
-	}
-})
+let ReloadControl = makeReloadControl(lanes, currentlyLoading)
 
 let TestFilterDisplay = React.createClass({
 	render: function() {
