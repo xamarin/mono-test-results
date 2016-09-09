@@ -43,8 +43,8 @@ class Failure {
 		return this.step + (this.test ? this.test : "")
 	}
 
-	equals(other:Failure) : boolean {
-		return this.step == other.step && this.test == other.test && this.kind == other.kind
+	equals(other:Failure) : boolean { // Allow match even if kind differs
+		return this.step == other.step && this.test == other.test
 	}
 }
 
