@@ -16,7 +16,9 @@ const localStorageVersion = "1"
 const localStorageCompressMode = "LZString"
 
 declare var overloadMaxBuildQueries : number
-function maxBuildQueries() { return typeof overloadMaxBuildQueries !== 'undefined' ? overloadMaxBuildQueries : defaultMaxBuildQueries }
+const maxBuildQueries = typeof overloadMaxBuildQueries !== 'undefined' ? overloadMaxBuildQueries : defaultMaxBuildQueries
+declare var overloadAllowPR : boolean
+const allowPr = typeof overloadAllowPR !== 'undefined' ? overloadAllowPR : true
 
 // Types
 
@@ -229,7 +231,7 @@ class Lane<B extends BuildBase> {
 			if ('debug' in options) console.log("lane loaded url", this.apiUrl, "result:", laneResult)
 			let queries = 0
 
-			this.buildsRemaining = Math.min(laneResult.builds.length, maxBuildQueries())
+			this.buildsRemaining = Math.min(laneResult.builds.length, maxBuildQueries)
 			for (let buildInfo of laneResult.builds) {
 				let buildId = String(buildInfo.number)
 				let timestamp:number = null // FIXME: This stores shared state for closures below. This is confusing and brittle.
@@ -353,7 +355,7 @@ class Lane<B extends BuildBase> {
 				}
 
 				queries++
-				if (queries >= maxBuildQueries())
+				if (queries >= maxBuildQueries)
 					break
 			}
 
@@ -373,7 +375,8 @@ function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 
 	for (let spec of jenkinsLaneSpecs) {
 		// Spec is a triplet of name, normal URL tag, PR URL tag
-		for (let d = 0; d < 2; d++) {
+		let columns = allowPr ? 2 : 1 // Look at PR URL tag column?
+		for (let d = 0; d < columns; d++) {
 			let name = spec[0]
 			if (d)
 				name += " (PR)"

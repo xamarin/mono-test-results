@@ -37,7 +37,7 @@ class BuildStatus extends React.Component<BuildStatusProps, {}> {
 			}
 
 			let buildLink = <span><A href={build.displayUrl} title={null}>{statusLanes[lane].name}</A> (build {build.id})</span>
-			let className = ""
+			let className:string = null
 
 			switch(build.result) {
 				case "UNSTABLE":
@@ -45,6 +45,8 @@ class BuildStatus extends React.Component<BuildStatusProps, {}> {
 					break
 				case "SUCCESS":
 					className = "ok"
+					break
+				case null:
 					break
 				default:
 					className = "failure"
@@ -96,7 +98,6 @@ let StatusArea = React.createClass({
 			for (let key of Object.keys(buildListings).sort(dateRangeLaterCmpFor(buildListings))) {
 				let buildListing = buildListings[key]
 				if (buildListing.inProgressLanes) {
-					console.log("XXZ")
 					inProgress.push(buildListing)
 				} else {
 					final = buildListing
