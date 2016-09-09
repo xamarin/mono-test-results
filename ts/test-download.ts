@@ -19,6 +19,8 @@ declare var overloadMaxBuildQueries : number
 const maxBuildQueries = typeof overloadMaxBuildQueries !== 'undefined' ? overloadMaxBuildQueries : defaultMaxBuildQueries
 declare var overloadAllowPR : boolean
 const allowPr = typeof overloadAllowPR !== 'undefined' ? overloadAllowPR : true
+declare var overloadFetchBabysitter : boolean
+const fetchBabysitter = typeof overloadFetchBabysitter !== 'undefined' ? overloadFetchBabysitter : true
 
 // Types
 
@@ -169,7 +171,8 @@ class BuildBase {
 
 	loaded() { // Note: Babysitter load is not attempted unless metadata results say to
 		return this.metadataStatus.loaded &&
-			(this.metadataStatus.failed || !this.complete || this.babysitterStatus.loaded)
+			(this.metadataStatus.failed || !fetchBabysitter
+				|| !this.complete || this.babysitterStatus.loaded)
 	}
 
 	failed() {
@@ -308,7 +311,7 @@ class Lane<B extends BuildBase> {
 							this.buildMap[buildId] = build
 
 							// If metadata received and build is finished,
-							if (build.complete) {
+							if (fetchBabysitter && build.complete) {
 								timestamp = toNumber(json.timestamp) // In practice already a number, but make sure
 
 								// Manage cache size
