@@ -595,7 +595,7 @@ let ContentArea = React.createClass({
 								failureListing.dateRange.add(build.date)
 								failureListing.count++
 								failureListing.lanes[lane.idx] = true
-								failureListing.builds[build.id] = true
+								failureListing.builds[build.buildTag()] = true
 							}
 						}
 					}
