@@ -112,6 +112,8 @@ class Choice<Key> extends React.Component<ChoiceProps<Key>, {}> {
 
 // Date utils
 
+const dayMs = 24*60*60*1000
+
 function formatDate(date: Date) {
 	let day = null
 	let now = new Date()

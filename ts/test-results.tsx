@@ -4,7 +4,6 @@
 // Constants
 
 const max_failures_unexpanded = 5
-const dayMs = 24*60*60*1000
 
 // Load
 

@@ -104,19 +104,36 @@ let StatusArea = React.createClass({
 			// Find newest finished build + anything newer
 			let inProgress:StatusBuildListing[] = []
 			let final:StatusBuildListing = null
+			let lastDaily:StatusBuildListing = null
 			for (let key of Object.keys(buildListings).sort(dateRangeLaterCmpFor(buildListings))) {
 				let buildListing = buildListings[key]
-				if (buildListing.inProgressLanes) {
-					inProgress.push(buildListing)
-				} else {
-					final = buildListing
-					break
+
+				if (!final) {
+					if (buildListing.inProgressLanes) {
+						inProgress.push(buildListing)
+					} else {
+						final = buildListing
+					}
 				}
+
+				if (!lastDaily && countKeys(buildListing.lanes) == statusLanes.length) {
+					lastDaily = buildListing
+				}
+
+				if (final && lastDaily)
+					break
 			}
 
 			let finalDisplay = final ? <div>
+				<hr />
 				<p className="pageCategory">Most recent build:</p>
 				<BuildStatus buildListing={final} />
+			</div> : null
+
+			let lastDailyDisplay = lastDaily && final !== lastDaily ? <div>
+				<hr />
+				<p className="pageCategory">Last daily build:</p>
+				<BuildStatus buildListing={lastDaily} />
 			</div> : null
 
 			let inProgressDisplay = inProgress.map(buildListing =>
@@ -126,12 +143,14 @@ let StatusArea = React.createClass({
 				inProgressDisplay.unshift(
 					<p className="pageCategory">In progress builds:</p>
 				)
+				inProgressDisplay.unshift(<hr />)
 			}
 
 			let loadingDisplay = !finalDisplay && !inProgressDisplay ? loadingIcon : null
 
 			return <div>
 				{finalDisplay}
+				{lastDailyDisplay}
 				{inProgressDisplay}
 				{loadingDisplay}
 			</div>
