@@ -21,6 +21,8 @@ declare var overloadAllowPR : boolean
 const allowPr = typeof overloadAllowPR !== 'undefined' ? overloadAllowPR : true
 declare var overloadFetchBabysitter : boolean
 const fetchBabysitter = typeof overloadFetchBabysitter !== 'undefined' ? overloadFetchBabysitter : true
+declare var overloadLaneVisibilityLevel : number
+const laneVisibilityLevel = typeof overloadLaneVisibilityLevel !== 'undefined' ? overloadLaneVisibilityLevel : 1
 
 // Types
 
@@ -134,11 +136,20 @@ let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 	["Linux Intel32",   "test-mono-mainline-linux/label=ubuntu-1404-i386",  "test-mono-pull-request-i386"],
 	["Linux ARM64",     "test-mono-mainline-linux/label=debian-8-arm64",    "test-mono-pull-request-arm64"],
 	["Linux ARM32-hf",  "test-mono-mainline-linux/label=debian-8-armhf",    "test-mono-pull-request-armhf"],
-	["Linux ARM32-el",  "test-mono-mainline-linux/label=debian-8-armel",    "test-mono-pull-request-armel"],
+	["Linux ARM32-el",  "test-mono-mainline-linux/label=debian-8-armel",    "test-mono-pull-request-armel"]
+]
 
-    // Windows builds do not currently run babysitter script.
-//	["Windows Intel32", "z/label=w32",                                      "w"],
-//	["Windows Intel64", "z/label=w64",                                      "x"]
+// Windows builds do not currently run babysitter script; FullAOT, Bitcode and checked are not nightly
+let jenkinsLaneSpecsPlus = [
+	["Windows Intel32",		  "z/label=w32",                                      "w"],
+	["Windows Intel64",       "z/label=w64",                                      "x"],
+	["Linux Intel64 Coop",    "test-mono-mainline-coop"]
+]
+
+let jenkinsLaneSpecsPlusValgrind = [
+	["Linux Intel64 FullAOT", "test-mono-mainline-mobile_static"],
+	// ["Linux Intel64 Bitcode", "test-mono-mainline-bitcode"], // This is a PR lane
+	["Linux Intel64 Bitcode Valgrind", "test-mono-mainline-bitcode-valgrind"]
 ]
 
 // Repo we expect our hashes to correspond to
@@ -376,21 +387,31 @@ function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 	// Construct lanes
 	let lanes: Lane<B>[] = []
 
-	for (let spec of jenkinsLaneSpecs) {
-		// Spec is a triplet of name, normal URL tag, PR URL tag
-		let columns = allowPr ? 2 : 1 // Look at PR URL tag column?
-		for (let d = 0; d < columns; d++) {
-			let name = spec[0]
-			if (d)
-				name += " (PR)"
-			let laneName = spec[d+1]
-			if (laneName) {
-				let lane = new Lane(lanes.length, b, name, laneName, !!d)
-				lanes.push(lane)
-				lane.load()
+	function make(specs:string[][]) {
+		for (let spec of specs) {
+			// Spec is a triplet of name, normal URL tag, PR URL tag
+			let columns = allowPr ? 2 : 1 // Look at PR URL tag column?
+			for (let d = 0; d < columns; d++) {
+				let name = spec[0]
+				if (d)
+					name += " (PR)"
+				let laneName = spec[d+1]
+				if (laneName) {
+					let lane = new Lane(lanes.length, b, name, laneName, !!d)
+					lanes.push(lane)
+					lane.load()
+				}
 			}
 		}
 	}
+
+	make(jenkinsLaneSpecs)
+
+	if (laneVisibilityLevel >= 2)
+		make(jenkinsLaneSpecsPlus)
+
+	if (laneVisibilityLevel >= 3)
+		make(jenkinsLaneSpecsPlusValgrind)
 
 	return lanes
 }
@@ -401,6 +422,7 @@ class BuildStandard extends BuildBase {
 	result: string
 	building: boolean
 	gitHash: string
+	gitHashSubstituteId: string
 	pr: string
 	prUrl: string
 	prTitle: string
@@ -462,16 +484,20 @@ class BuildStandard extends BuildBase {
 	buildTag() {
 		if (this.pr)
 			return this.pr+this.gitHash
-		return this.gitHash
+		if (this.gitHash)
+			return this.gitHash
+		return "INVALID" // Lane is misconfigured
 	}
 
 	gitDisplay() {
-		return this.gitHash.slice(0,6)
+		return this.gitHash ? this.gitHash.slice(0,6) : "[UNKNOWN]"
 	}
 
 	gitUrl() {
 		if (this.prUrl)
 			return this.prUrl
-		return "https://github.com/mono/mono/commit/" + this.gitHash
+		if (this.gitHash)
+			return "https://github.com/mono/mono/commit/" + this.gitHash
+		return "https://github.com/mono/mono" // Lane is misconfigured
 	}
 }
