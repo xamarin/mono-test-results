@@ -143,12 +143,14 @@ let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 let jenkinsLaneSpecsPlus = [
 	["Windows Intel32",		  "z/label=w32",                                      "w"],
 	["Windows Intel64",       "z/label=w64",                                      "x"],
-	["Linux Intel64 Coop",    "test-mono-mainline-coop"]
+	["Linux Intel32 Coop",    "test-mono-mainline-coop/label=ubuntu-1404-i386"],
+	["Linux Intel64 Coop",    "test-mono-mainline-coop/label=ubuntu-1404-amd64"]
 ]
 
 let jenkinsLaneSpecsPlusValgrind = [
-	["Linux Intel64 FullAOT", "test-mono-mainline-mobile_static"],
-	// ["Linux Intel64 Bitcode", "test-mono-mainline-bitcode"], // This is a PR lane
+	["Linux Intel64 FullAOT",          "test-mono-mainline-mobile_static/label=ubuntu-1404-amd64"],
+	["Linux Intel32 Bitcode",          "test-mono-mainline-bitcode/label=ubuntu-1404-i386"],
+	["Linux Intel64 Bitcode",          "test-mono-mainline-bitcode/label=ubuntu-1404-amd64"],
 	["Linux Intel64 Bitcode Valgrind", "test-mono-mainline-bitcode-valgrind"]
 ]
 
