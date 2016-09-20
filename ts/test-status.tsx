@@ -4,18 +4,21 @@
 let statusLanes = makeLanes(BuildStandard)
 
 class StatusBuildListing extends Listing {
-	inProgressLanes: number
 	lanes: { [laneIndex:number]: BuildStandard }
+	ready: { [laneIndex:number]: boolean } // Lane ready to display if true
+	inProgress: { [laneIndex:number]: boolean } // Lane in progress if true
 
 	constructor(public displayUrl: string, public gitDisplay: string) {
 		super()
-		this.inProgressLanes = 0
 		this.lanes = {}
+		this.ready = {}
+		this.inProgress = {}
 	}
 }
 
 class BuildStatusProps {
 	buildListing: StatusBuildListing
+	inProgressDisplay: Boolean
 }
 
 class BuildStatus extends React.Component<BuildStatusProps, {}> {
@@ -29,13 +32,21 @@ class BuildStatus extends React.Component<BuildStatusProps, {}> {
 		let stillLoading = false
 
 		for (let lane of Object.keys(buildListing.lanes)) {
+			// For main display, only show entries that are present.
+			if (!(this.props.inProgressDisplay || buildListing.ready[+lane]))
+				continue
+
 			let build = buildListing.lanes[+lane]
 
+			// Don't try to display entries which we are still loading information about.
+			// If this is the in progress display, show an indicator to note some things are known missing.
 			if (!build.metadataStatus.loaded) {
-				stillLoading = true
+				if (this.props.inProgressDisplay)
+					stillLoading = true
 				continue
 			}
 
+			// Build JSX element
 			let buildLink = <span><A href={build.displayUrl} title={null}>{statusLanes[lane].name}</A> (build {build.id})</span>
 			let className:string = null
 
@@ -86,58 +97,66 @@ let StatusArea = React.createClass({
 		let dateRange = new DateRange()
 
 		if (readyLanes.length) {
-			// Categorize builds
+			// Categorize builds and group by git hash
+
 			let buildListings: {[key:string] : StatusBuildListing} = {}
 			for (let lane of readyLanes) {
 				for (let build of lane.builds()) {
 					let buildListing = getOrDefault(buildListings, build.buildTag(),
 							() => new StatusBuildListing(build.gitUrl(), build.gitDisplay()))
 
-					if (build.inProgress())
-						buildListing.inProgressLanes++
-
 					buildListing.dateRange.add(build.date)
 					buildListing.lanes[lane.idx] = build
+					if (build.inProgress())
+						buildListing.inProgress[lane.idx] = true
+					else
+						buildListing.ready[lane.idx] = true
 				}
 			}
 
-			// Find newest finished build + anything newer
+			// Scan groups of builds and decide which to display
+
+			// Builds with finished lanes
+			let ready:StatusBuildListing[] = []
+			// Builds with relevant in-progress lanes
 			let inProgress:StatusBuildListing[] = []
-			let final:StatusBuildListing = null
-			let lastDaily:StatusBuildListing = null
+			// Has this lane seen a ready build yet?
+			let laneReady = statusLanes.map(_ => false)
+			let laneReadyCount = 0
 			for (let key of Object.keys(buildListings).sort(dateRangeLaterCmpFor(buildListings))) {
 				let buildListing = buildListings[key]
+				let groupReady = false
+				let groupInProgress = false
 
-				if (!final) {
-					if (buildListing.inProgressLanes) {
-						inProgress.push(buildListing)
+				for (let idx in laneReady) {
+					if (laneReady[idx]) {
+						buildListing.ready[idx] = false // KLUDGE
 					} else {
-						final = buildListing
+						if (buildListing.ready[idx]) {
+							groupReady = true
+							laneReady[idx] = true
+							laneReadyCount++
+						} else if (buildListing.inProgress[idx]) {
+							groupInProgress = true
+						}
 					}
 				}
 
-				if (!lastDaily && countKeys(buildListing.lanes) == statusLanes.length) {
-					lastDaily = buildListing
-				}
+				if (groupReady)
+					ready.push(buildListing)
+				if (groupInProgress)
+					inProgress.push(buildListing)
 
-				if (final && lastDaily)
+				if (laneReadyCount >= laneReady.length)
 					break
 			}
 
-			let finalDisplay = final ? <div>
-				<hr />
-				<p className="pageCategory">Most recent build:</p>
-				<BuildStatus buildListing={final} />
-			</div> : null
-
-			let lastDailyDisplay = lastDaily && final !== lastDaily ? <div>
-				<hr />
-				<p className="pageCategory">Last daily build:</p>
-				<BuildStatus buildListing={lastDaily} />
-			</div> : null
+			let readyDisplay = ready.map(buildListing =>
+				<BuildStatus buildListing={buildListing} inProgressDisplay={false} />
+			)
 
 			let inProgressDisplay = inProgress.map(buildListing =>
-				<BuildStatus buildListing={buildListing} />
+				<BuildStatus buildListing={buildListing} inProgressDisplay={true} />
 			)
 			if (inProgressDisplay.length) {
 				inProgressDisplay.unshift(
@@ -146,11 +165,12 @@ let StatusArea = React.createClass({
 				inProgressDisplay.unshift(<hr />)
 			}
 
-			let loadingDisplay = !finalDisplay && !inProgressDisplay ? loadingIcon : null
+			let loadingDisplay = !readyDisplay.length && !inProgressDisplay.length ? loadingIcon : null
 
 			return <div>
-				{finalDisplay}
-				{lastDailyDisplay}
+				<hr />
+				<p className="pageCategory">Most recent build:</p>
+				{readyDisplay}
 				{inProgressDisplay}
 				{loadingDisplay}
 			</div>
