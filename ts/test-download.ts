@@ -139,15 +139,20 @@ let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 	["Linux ARM32-el",  "test-mono-mainline-linux/label=debian-8-armel",    "test-mono-pull-request-armel"]
 ]
 
-// Windows builds do not currently run babysitter script; FullAOT, Bitcode and checked are not nightly
+// Windows builds do not currently run babysitter script
+// All builds in this list EXCEPT Windows are nightly, not per-commit
+// The "Coop" lanes are partial checked builds (no metadata check)
 let jenkinsLaneSpecsPlus = [
-	["Windows Intel32",       "z/label=w32", "w"],
-	["Windows Intel64",       "z/label=w64", "x"],
-	["Linux Intel32 Coop",    "test-mono-mainline-coop/label=ubuntu-1404-i386"],
-	["Linux Intel64 Coop",    "test-mono-mainline-coop/label=ubuntu-1404-amd64"],
-	["Linux Intel32 FullAOT", "test-mono-mainline-mobile_static/label=ubuntu-1404-i386"],
-	["Linux Intel64 FullAOT", "test-mono-mainline-mobile_static/label=ubuntu-1404-amd64"],
-	["Linux Intel64 Bitcode", "test-mono-mainline-bitcode/label=ubuntu-1404-amd64"]
+	["Windows Intel32",        "z/label=w32", "w"],
+	["Windows Intel64",        "z/label=w64", "x"],
+	["Linux Intel32  Coop",    "test-mono-mainline-coop/label=ubuntu-1404-i386"],
+	["Linux Intel64  Coop",    "test-mono-mainline-coop/label=ubuntu-1404-amd64"],
+	["Linux Intel32  FullAOT", "test-mono-mainline-mobile_static/label=ubuntu-1404-i386"],
+	["Linux Intel64  FullAOT", "test-mono-mainline-mobile_static/label=ubuntu-1404-amd64"],
+	["Linux ARM64    FullAOT", "test-mono-mainline-mobile_static/label=debian-8-arm64"],
+	["Linux ARM32-hf FullAOT", "test-mono-mainline-mobile_static/label=debian-8-armhf"],
+	["Linux ARM32-el FullAOT", "test-mono-mainline-mobile_static/label=debian-8-armel"],
+	["Linux Intel64  Bitcode", "test-mono-mainline-bitcode/label=ubuntu-1404-amd64"]
 ]
 
 let jenkinsLaneSpecsPlusValgrind = [
