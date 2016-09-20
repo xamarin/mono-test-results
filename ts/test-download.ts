@@ -141,21 +141,34 @@ let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 
 // Windows builds do not currently run babysitter script; FullAOT, Bitcode and checked are not nightly
 let jenkinsLaneSpecsPlus = [
-	["Windows Intel32",		  "z/label=w32",                                      "w"],
-	["Windows Intel64",       "z/label=w64",                                      "x"],
+	["Windows Intel32",       "z/label=w32", "w"],
+	["Windows Intel64",       "z/label=w64", "x"],
 	["Linux Intel32 Coop",    "test-mono-mainline-coop/label=ubuntu-1404-i386"],
-	["Linux Intel64 Coop",    "test-mono-mainline-coop/label=ubuntu-1404-amd64"]
+	["Linux Intel64 Coop",    "test-mono-mainline-coop/label=ubuntu-1404-amd64"],
+	["Linux Intel32 FullAOT", "test-mono-mainline-mobile_static/label=ubuntu-1404-i386"],
+	["Linux Intel64 FullAOT", "test-mono-mainline-mobile_static/label=ubuntu-1404-amd64"],
+	["Linux Intel64 Bitcode", "test-mono-mainline-bitcode/label=ubuntu-1404-amd64"]
 ]
 
 let jenkinsLaneSpecsPlusValgrind = [
-	["Linux Intel64 FullAOT",          "test-mono-mainline-mobile_static/label=ubuntu-1404-amd64"],
-	["Linux Intel32 Bitcode",          "test-mono-mainline-bitcode/label=ubuntu-1404-i386"],
-	["Linux Intel64 Bitcode",          "test-mono-mainline-bitcode/label=ubuntu-1404-amd64"],
-	["Linux Intel64 Bitcode Valgrind", "test-mono-mainline-bitcode-valgrind"]
+	["Linux Intel64 Bitcode Valgrind", "test-mono-mainline-bitcode-valgrind/label=ubuntu-1404-amd64"]
 ]
 
-// Repo we expect our hashes to correspond to
-let gitRepo = "git://github.com/mono/mono.git"
+// Repo we expect our hashes to correspond to (any entry acceptable)
+let gitRepo = {
+	"git://github.com/mono/mono.git": true,
+	"https://github.com/mono/mono": true
+}
+
+// `remoteUrls` contains a list of URLs, which in some lanes includes no-longer used historical URLs.
+// We assume that if the main mono repo is in this list, this build is at least a BRANCH of mono and therefore good enough.
+function gitRepoMatches(json:any) {
+	for (let url of json) {
+		if (url in gitRepo)
+			return true
+	}
+	return false
+}
 
 // Download support
 
@@ -458,8 +471,8 @@ class BuildStandard extends BuildBase {
 						}
 					}
 				} else if (action._class == "hudson.plugins.git.util.BuildData") {
-					// There will be one of these for the standards suite repo and one of these for the "real" git repo
-					if (action.lastBuiltRevision && action.remoteUrls && action.remoteUrls[0] == gitRepo) {
+					// There will be typically be one array entry for the standards suite repo and one array entry for the "real" git repo
+					if (action.lastBuiltRevision && action.remoteUrls && gitRepoMatches(action.remoteUrls)) {
 						gitHash = action.lastBuiltRevision.SHA1
 					}
 				}
