@@ -3,16 +3,26 @@
 
 let statusLanes = makeLanes(BuildStandard)
 
+let coreLaneTotal = 0
+for (let lane of statusLanes) {
+	if (lane.isCore)
+		coreLaneTotal++
+}
+
 class StatusBuildListing extends Listing {
 	lanes: { [laneIndex:number]: BuildStandard }
 	ready: { [laneIndex:number]: boolean } // Lane ready to display if true
 	inProgress: { [laneIndex:number]: boolean } // Lane in progress if true
+	coreCount: number
+	lowestLaneIdx: number
 
 	constructor(public displayUrl: string, public gitDisplay: string) {
 		super()
 		this.lanes = {}
 		this.ready = {}
 		this.inProgress = {}
+		this.coreCount = 0
+		this.lowestLaneIdx = statusLanes.length + 1
 	}
 }
 
@@ -91,6 +101,12 @@ function statusCurrentlyLoading() { // Slight redundancy with test-results
 
 let StatusReloadControl = makeReloadControl(statusLanes, statusCurrentlyLoading)
 
+// This display follows various sorta-vague heuristics fitting the goals
+// - We would like to display only one build with all lanes
+// - This is not possible with "non-core" builds, which run only nightly
+// It winds up showing the last git commit with builds for all core lanes,
+// followed by the most recent single build result for each non-core lane,
+// followed by any builds which got skipped over while making that list.
 let StatusArea = React.createClass({
 	render: function() {
 		let readyLanes = statusLanes.filter(lane => lane.visible())
@@ -107,15 +123,19 @@ let StatusArea = React.createClass({
 
 					buildListing.dateRange.add(build.date)
 					buildListing.lanes[lane.idx] = build
-					if (build.inProgress())
+					if (build.inProgress()) {
 						buildListing.inProgress[lane.idx] = true
-					else
+					} else {
 						buildListing.ready[lane.idx] = true
+						if (lane.isCore)
+							buildListing.coreCount++
+					}
 				}
 			}
 
 			// Scan groups of builds and decide which to display
 
+			let core:StatusBuildListing
 			// Builds with finished lanes
 			let ready:StatusBuildListing[] = []
 			// Builds with relevant in-progress lanes
@@ -127,15 +147,32 @@ let StatusArea = React.createClass({
 				let buildListing = buildListings[key]
 				let groupReady = false
 				let groupInProgress = false
+				let missingCores = buildListing.coreCount < coreLaneTotal
 
-				for (let idx in laneReady) {
-					if (laneReady[idx]) {
+				for (let idx in buildListing.lanes) {
+					let alreadyDisplayed = laneReady[idx]
+					let readyCanDisplay = buildListing.ready[idx]
+					let blockedByCoreRules = missingCores && statusLanes[idx].isCore
+
+					// Already displayed a ready entry for this lane, hide this
+					if (alreadyDisplayed) {
 						buildListing.ready[idx] = false // KLUDGE
 					} else {
-						if (buildListing.ready[idx]) {
-							groupReady = true
-							laneReady[idx] = true
-							laneReadyCount++
+						// Lane is ready to display
+						if (readyCanDisplay) {
+							// , but can't be because it's missing core lanes
+							if (blockedByCoreRules) {
+								buildListing.ready[idx] = false // KLUDGE
+								groupInProgress = true
+							// , and wil be displayed
+							} else {
+								groupReady = true
+								laneReady[idx] = true
+								laneReadyCount++
+								if (buildListing.lowestLaneIdx > +idx)
+									buildListing.lowestLaneIdx = +idx // KLUDGE
+							}
+						// Lane is in progress and this build should be added to the in progress list
 						} else if (buildListing.inProgress[idx]) {
 							groupInProgress = true
 						}
@@ -151,7 +188,7 @@ let StatusArea = React.createClass({
 					break
 			}
 
-			let readyDisplay = ready.map(buildListing =>
+			let readyDisplay = ready.sort( (a,b) => a.lowestLaneIdx - b.lowestLaneIdx ).map(buildListing =>
 				<BuildStatus buildListing={buildListing} inProgressDisplay={false} />
 			)
 

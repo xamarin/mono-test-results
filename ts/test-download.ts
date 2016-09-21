@@ -233,19 +233,21 @@ class Lane<B extends BuildBase> {
 	displayUrl: string // Link to human-readable info page for build
 	apiUrl: string     // Link to url JSON was loaded from
 	isPr: boolean
+	isCore:boolean     // This lane is tested on every commit
 	status: Status
 	everLoaded: boolean
 	buildMap: { [key:string] : B }
 	buildsRemaining: number // Count of builds not yet finished loading
 	buildConstructor: BuildClass<B>
 
-	constructor(idx:number, buildConstructor: BuildClass<B>, name:string, laneName:string, isPr:boolean) {
+	constructor(idx:number, buildConstructor: BuildClass<B>, name:string, laneName:string, isPr:boolean, isCore:boolean) {
 		this.idx = idx
 		this.name = name
 		this.tag = laneName
 		this.displayUrl = jenkinsBaseUrl(laneName)
 		this.apiUrl = jenkinsLaneUrl(laneName)
 		this.isPr = isPr
+		this.isCore = isCore
 		this.status = new Status()
 		this.everLoaded = false
 		this.buildMap = {}
@@ -417,7 +419,8 @@ function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 					name += " (PR)"
 				let laneName = spec[d+1]
 				if (laneName) {
-					let lane = new Lane(lanes.length, b, name, laneName, !!d)
+					// Notice: isCore (build every commit) is established by a PR lane existing for an arch
+					let lane = new Lane(lanes.length, b, name, laneName, !!d, spec.length > 2)
 					lanes.push(lane)
 					lane.load()
 				}
