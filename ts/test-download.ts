@@ -74,7 +74,7 @@ function localStorageWhittle(downTo: number, date: number) {
 		}
 
 		if (date <= target.date) { // FIXME: This is ridiculously unlikely, and if we hit it something else is probably wrong.
-			console.log("Tried to lower localstorage cache to goal "+downTo+", but the oldest item in the cache ("+target.date+") is no older than the replacement one ("+date+"), so cancelled.")
+			if ('debug' in options) console.log("Tried to lower localstorage cache to goal "+downTo+", but the oldest item in the cache ("+target.date+") is no older than the replacement one ("+date+"), so cancelled.")
 			return false
 		}
 
@@ -82,7 +82,7 @@ function localStorageWhittle(downTo: number, date: number) {
 		deletionQueue.deq()
 		localStorageClear(cachePrefix + target.id)
 
-		console.log("Clearing space in localstorage cache (goal "+downTo+"): Forgot build", target.id, "local storage now", localStorageUsage())
+		if ('debug' in options) console.log("Clearing space in localstorage cache (goal "+downTo+"): Forgot build", target.id, "local storage now", localStorageUsage())
 	}
 
 	return true
