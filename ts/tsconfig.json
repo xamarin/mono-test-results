@@ -4,6 +4,7 @@
         "outDir": "../install/js"
     },
     "files": [
+        "breakout.ts",
     	"helper.ts",
     	"helper-react.tsx",
     	"test-download.ts",

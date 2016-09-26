@@ -24,6 +24,7 @@ const fetchBabysitter = typeof overloadFetchBabysitter !== 'undefined' ? overloa
 declare var overloadLaneVisibilityLevel : number
 const laneVisibilityLevel = typeof overloadLaneVisibilityLevel !== 'undefined' ? overloadLaneVisibilityLevel : 1
 declare var overloadLaneContents : string[][]
+const haveOverloadLaneContents = typeof overloadLaneContents !== 'undefined'
 
 // Types
 
@@ -430,7 +431,7 @@ function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 		}
 	}
 
-	if (overloadLaneContents) {
+	if (haveOverloadLaneContents) {
 		make(overloadLaneContents)
 	} else {
 		make(jenkinsLaneSpecs)
