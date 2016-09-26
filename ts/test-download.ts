@@ -45,22 +45,40 @@ if (localStorageGetItem("version") != localStorageVersion) {
 }
 
 class DeletionQueueItem {
-	constructor(public date: number, public id: string) {}
+	constructor(public date: number, public tag: string) {}
 }
 
 let deletionQueue = new PriorityQueue( (a,b) => b.date - a.date )
 
 // Add an item to the in-memory list of deletables.
-function deletionQueueEnq(date:number, id:string) {
-	deletionQueue.enq(new DeletionQueueItem(date, id))
+function deletionQueueEnq(date:number, tag:string) {
+	deletionQueue.enq(new DeletionQueueItem(date, tag))
 }
 
 // Add an item to the in-memory and localstorage lists of deletables.
-function deletionQueueRegister(date:number, id:string) {
-	let timestampKey = cachePrefix + id + "!timestamp"
+function deletionQueueRegister(date:number, tag:string) {
+	let timestampKey = cachePrefix + tag + "!timestamp"
 	if (!localStorage.getItem(timestampKey)) {
 		localStorageSetItem(timestampKey, String(date))
-		deletionQueueEnq(date, id)
+		deletionQueueEnq(date, tag)
+	}
+}
+
+let deletionIndex : { [key:string] : string[] } = {}
+
+function deletionIndexAdd(tag:string, kind:string) {
+	if (!(tag in deletionIndex))
+		deletionIndex[tag] = []
+	deletionIndex[tag].push( kind )
+}
+
+function deletionIndexClear(tag:string) {
+	let kinds = deletionIndex[tag]
+	if (kinds) {
+		for (let kind of kinds) {
+			localStorageClearOne(cachePrefix + tag + "!" + kind)
+		}
+        delete deletionIndex[tag]
 	}
 }
 
@@ -92,18 +110,24 @@ function localStorageWhittle(downTo: number, date: number) {
 
 // Build deletion queue from initial cache contents
 // TODO: Also load these items as lanes
+console.log("PRE")
 {
-	let isTimestamp = new RegExp(localStoragePrefix + cachePrefix + "(?:\\d+)!(?:[^!]+)!timestamp")
+	let parseCacheItem = new RegExp("^" + localStoragePrefix + cachePrefix + "(\\d+![^!]+)!([^!]+)$")
 	for (let i = 0; i < localStorage.length; i++) {
 		let key = localStorage.key(i)
-		let match = isTimestamp.test(key)
+		let match = parseCacheItem.test(key)
 		if (!match)
 			continue
-		let id = match[1]
-		let date = toNumber(localStorage.getItem(key))
-		deletionQueueEnq(date, id)
+		let tag = match[1]
+		let kind = match[2]
+		deletionIndexAdd(tag, kind)
+		if (kind == "timestamp") {
+			let date = toNumber(localStorage.getItem(key))
+			deletionQueueEnq(date, tag)
+		}
 	}
 }
+console.log("POST")
 
 // Lanes list
 
