@@ -192,3 +192,12 @@ function localStorageClear(prefix:string = "") {
 		localStorage.removeItem(key)
 	}
 }
+
+// Delete a single item from local storage
+function localStorageClearOne(key:string) {
+	let fullKey = localStoragePrefix + key
+	let previous = localStorage.getItem(fullKey)
+	if (previous != null)
+		localStorageUsageDelta(-key.length - previous.length)
+	localStorage.removeItem(fullKey)
+}
