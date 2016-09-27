@@ -444,7 +444,10 @@ function linkJenkins(lane: Lane<Build>, build: Build) {
 
 let ContentArea = React.createClass({
 	render: function() {
-		let readyLanes = filterLanes().filter(lane => lane.visible())
+		let readyLanes = filterLanes().filter(
+			lane => lane.visible() &&
+				(!laneVisible || laneVisible[lane.idx].value == Visibility.Show)
+		)
 		let dateRange = new DateRange()
 
 		if (readyLanes.length) {
