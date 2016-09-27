@@ -64,8 +64,6 @@ class ChoiceProps<Key> {
 }
 
 class Choice<Key> extends React.Component<ChoiceProps<Key>, {}> {
-	selection: string
-
 	constructor(props: ChoiceProps<Key>) {
 		super(props)
 	}
@@ -109,6 +107,38 @@ class Choice<Key> extends React.Component<ChoiceProps<Key>, {}> {
 		return <span className="choice">{children}</span>
 	}
 }
+
+class CheckboxProps<Key> extends ChoiceProps<Key> {
+	on: Key
+	off: Key
+	label:string
+}
+
+class Checkbox<Key> extends React.Component<CheckboxProps<Key>, {}> {
+	constructor(props) {
+		super(props)
+	}
+
+	render() {
+		let currentlyChecked:boolean = this.props.data.value == this.props.on
+		return (
+			<span className="checkbox">
+				<input
+					type="checkbox"
+					checked={currentlyChecked}
+					onChange={
+						e => {
+							this.props.data.value = currentlyChecked ? this.props.off : this.props.on
+							invalidateUi()
+						}
+					}
+				/> {" "}
+				{this.props.label}
+			</span>
+		)
+	}
+}
+
 
 // Date utils
 

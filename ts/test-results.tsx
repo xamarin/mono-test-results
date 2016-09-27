@@ -5,6 +5,9 @@
 
 const max_failures_unexpanded = 5
 
+declare var overloadShowLaneCheckboxes : number
+const showLaneCheckboxes = typeof overloadShowLaneCheckboxes !== 'undefined' ? overloadShowLaneCheckboxes : false
+
 // Load
 
 enum FailureKind {
@@ -164,6 +167,11 @@ class ChoiceVisibility extends Choice<Visibility> {}
 let prVisible = new Ref(Visibility.Hide)
 let massFailVisible = new Ref(Visibility.Show)
 let inProgressVisible = new Ref(Visibility.Hide)
+
+class CheckboxVisibility extends Checkbox<Visibility> {}
+let laneVisible : Ref<Visibility>[] = null
+if (showLaneCheckboxes)
+	laneVisible = lanes.map(_ => new Ref(Visibility.Show))
 
 class ChoiceGroupBy extends Choice<GroupBy> {}
 let groupBy = new Ref(GroupBy.Lanes)
@@ -642,6 +650,23 @@ registerRender( () => {
 		</span> :
 		null
 
+	let laneCheckboxDisplay = null
+	if (laneVisible) {
+		let laneCheckboxes : JSX.Element[] = []
+		for (let idx in lanes) {
+			let lane = lanes[idx]
+			if (lane.isPr && prVisible.value == Visibility.Hide)
+				continue
+			let value = laneVisible[idx]
+			laneCheckboxes.push(<span className="checkboxContainer">
+				<CheckboxVisibility enum={Visibility} data={value} value={value.value}
+					on={Visibility.Show} off={Visibility.Hide} 
+					label={lane.name} /> {" "}
+			</span>)
+		}
+		laneCheckboxDisplay = <div><br /><div className="checkboxGrid">{laneCheckboxes}</div></div>
+	}
+
 	ReactDOM.render(<div>
 		<TitleBar />
 		<br />
@@ -656,6 +681,7 @@ registerRender( () => {
 			Mass-fails <ChoiceVisibility enum={Visibility} data={massFailVisible} value={massFailVisible.value} />
 			{inProgressChoice}
 			<TestFilterDisplay />
+			{laneCheckboxDisplay}
 		</div>
 		<LoadingBox />
 		<LaneErrorBox />

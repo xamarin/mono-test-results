@@ -97,3 +97,15 @@ li.failureExpand a {
 }
 
 .buildResultString {}
+
+.checkboxGrid {
+	display: flex;
+	flex-flow: row wrap;
+	justify-content: flex-start;
+	align-cotent: flex-start;
+}
+
+.checkboxGrid .checkboxContainer {
+	margin-right:5px;
+}
+
