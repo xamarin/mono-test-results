@@ -137,7 +137,43 @@ function formatRange(range: DateRange) {
 	return <span className="datetimeRange">{formatDate(range.early)} - {formatDate(range.late)}</span>
 }
 
-// Components
+// Components: Top title bar
+
+let titleBarSpec = [
+	["index.html", "Quick status"],
+	["failures.html", "Failure logs"],
+	["failures-plus.html", "Failure logs (special configurations)"],
+	["failures-4.8.html", "Failure logs (4.8 branch)"],
+	// ["https://jenkins.mono-project.com/view/All/job/jenkins-testresult-viewer/", "Source"]
+]
+
+// Figure out current page from URL. Show current page to left, links to all other pages to right
+class TitleBar extends React.Component<{}, {}> {
+	render() {
+		let pageTitle = "CI viewer" // Title for unknown page
+		let currentPath = window.location.pathname
+		let currentFilename = currentPath.substring(currentPath.lastIndexOf('/')+1)
+		let otherPages : JSX.Element[] = []
+		for (let spec of titleBarSpec) {
+			let url = spec[0]
+			let title = spec[1]
+			if (currentFilename == url) {
+				pageTitle = title
+			} else {
+				if (otherPages.length)
+					otherPages.push(<span> | </span>)
+				otherPages.push(<a href={url}>{title}</a>)
+			}
+		}
+		return <div>
+				<span className="pageTitle">{pageTitle}</span> {" "}
+				| See also: {otherPages}
+			</div>
+	}
+}
+
+
+// Components: 
 
 let loadingIcon = <span><Icon src="images/loading.gif" /> Loading...</span>
 
@@ -172,7 +208,6 @@ function makeReloadControl<T extends BuildBase>(lanes: Lane<T>[], currentlyLoadi
 	})
 	return ReloadControl
 }
-
 
 // Display refresh
 

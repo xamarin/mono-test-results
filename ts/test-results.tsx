@@ -643,7 +643,8 @@ registerRender( () => {
 		null
 
 	ReactDOM.render(<div>
-		<div className="pageTitle">Babysitter logs</div>
+		<TitleBar />
+		<br />
 		<ReloadControl />
 		<div>
 			Group by: <ChoiceGroupBy enum={GroupBy} data={groupBy} value={groupBy.value} />

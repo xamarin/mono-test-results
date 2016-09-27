@@ -221,7 +221,7 @@ let StatusArea = React.createClass({
 registerRender( () => {
 	ReactDOM.render(<div>
 		<div>
-			<span className="pageTitle">Quick status</span> | See also: <A href="failures.html" title={null}>Build failures</A>
+			<TitleBar />
 			<StatusReloadControl />
 		</div>
 		<StatusArea />
