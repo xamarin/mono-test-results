@@ -199,6 +199,5 @@ function localStorageClearOne(key:string) {
 	let previous = localStorage.getItem(fullKey)
 	if (previous != null)
 		localStorageUsageDelta(-key.length - previous.length)
-	console.log("deleting", fullKey, "found?", previous != null)
 	localStorage.removeItem(fullKey)
 }

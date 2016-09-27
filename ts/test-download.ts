@@ -44,45 +44,51 @@ if (localStorageGetItem("version") != localStorageVersion) {
 	localStorageSetItem("compressMode", localStorageCompressMode)
 }
 
+// The cache consists of: for each cache tag (build id+lane key) there is a series of cache items, one of which is always a "timestamp".
+// The deletion queue is a timestamp-sorted heap of build tags.
+// The deletion index is a lookup table for mapping cache tags to the subkeys for that tag's cache items.
+// TODO: If we could switch to IndexedDB, some of this could be done with built-in capabilities.
+
 class DeletionQueueItem {
-	constructor(public date: number, public tag: string) {}
+	constructor(public date: number, public buildTag: string) {}
 }
 
 let deletionQueue = new PriorityQueue( (a,b) => b.date - a.date )
 
 // Add an item to the in-memory list of deletables.
-function deletionQueueEnq(date:number, tag:string) {
-	deletionQueue.enq(new DeletionQueueItem(date, tag))
+function deletionQueueEnq(date:number, buildTag:string) {
+	deletionQueue.enq(new DeletionQueueItem(date, buildTag))
 }
 
 // Add an item to the in-memory and localstorage lists of deletables.
-function deletionQueueRegister(date:number, tag:string) {
-	let timestampKey = cachePrefix + tag + "!timestamp"
+function deletionQueueRegister(date:number, buildTag:string) {
+	let timestampKey = cachePrefix + buildTag + "!timestamp"
 	if (!localStorage.getItem(timestampKey)) {
 		localStorageSetItem(timestampKey, String(date))
-		deletionQueueEnq(date, tag)
+		deletionQueueEnq(date, buildTag)
 	}
 }
 
-let deletionIndex : { [key:string] : string[] } = {}
+let deletionIndex : { [buildTag:string] : string[] } = {}
 
-function deletionIndexAdd(tag:string, kind:string) {
-	if (!(tag in deletionIndex))
-		deletionIndex[tag] = []
-	deletionIndex[tag].push( kind )
+function deletionIndexAdd(buildTag:string, kind:string) {
+	if (!(buildTag in deletionIndex))
+		deletionIndex[buildTag] = []
+	deletionIndex[buildTag].push( kind )
 }
 
-function deletionIndexClear(tag:string) {
-	let kinds = deletionIndex[tag]
+function deletionIndexClear(buildTag:string) {
+	let kinds = deletionIndex[buildTag]
 	if (kinds) {
 		for (let kind of kinds) {
-			localStorageClearOne(cachePrefix + tag + "!" + kind)
+			localStorageClearOne(cachePrefix + buildTag + "!" + kind)
 		}
-        delete deletionIndex[tag]
+        delete deletionIndex[buildTag]
 	}
 }
 
-// Given a target size and a timestamp, delete items older than that timestamp until that target size is reached)
+// Given a target size and a timestamp, delete items older than that timestamp until that target size is reached.
+// Delete entire build tags (with all their subkeys) at a time.
 function localStorageWhittle(downTo: number, date: number) {
 	while (localStorageUsage() > downTo) {
 		let target:DeletionQueueItem
@@ -100,9 +106,9 @@ function localStorageWhittle(downTo: number, date: number) {
 
 		// Target is appropriate to delete
 		deletionQueue.deq()
-		localStorageClear(cachePrefix + target.id)
+		deletionIndexClear(target.buildTag)
 
-		if ('debug' in options) console.log("Clearing space in localstorage cache (goal "+downTo+"): Forgot build", target.id, "local storage now", localStorageUsage())
+		if ('debug' in options) console.log("Clearing space in localstorage cache (goal "+downTo+"): Forgot build", target.buildTag, "local storage now", localStorageUsage())
 	}
 
 	return true
@@ -110,24 +116,22 @@ function localStorageWhittle(downTo: number, date: number) {
 
 // Build deletion queue from initial cache contents
 // TODO: Also load these items as lanes
-console.log("PRE")
 {
 	let parseCacheItem = new RegExp("^" + localStoragePrefix + cachePrefix + "(\\d+![^!]+)!([^!]+)$")
 	for (let i = 0; i < localStorage.length; i++) {
 		let key = localStorage.key(i)
-		let match = parseCacheItem.test(key)
+		let match = parseCacheItem.exec(key)
 		if (!match)
 			continue
-		let tag = match[1]
+		let buildTag = match[1]
 		let kind = match[2]
-		deletionIndexAdd(tag, kind)
+		deletionIndexAdd(buildTag, kind)
 		if (kind == "timestamp") {
 			let date = toNumber(localStorage.getItem(key))
-			deletionQueueEnq(date, tag)
+			deletionQueueEnq(date, buildTag)
 		}
 	}
 }
-console.log("POST")
 
 // Lanes list
 
