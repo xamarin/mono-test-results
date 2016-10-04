@@ -126,7 +126,6 @@ let needHashPush:boolean = false
 function tryHashPush() {
 	if (!needHashPush)
 		return
-	console.log("ATTEMPTING HASH CHANGE")
 	let newHashOptions = emptyObject()
 	for (let key in hashRefs) {
 		let ref = hashRefs[key]
@@ -135,7 +134,6 @@ function tryHashPush() {
 	}
 	if (objectEqual(hashOptions, newHashOptions)) // Is this automatic?
 		return
-	console.log("PERFORMING HASH CHANGE")
 	hashOptions = newHashOptions
 	history.pushState(null, null, dictToHash(hashOptions))
 }
@@ -146,7 +144,6 @@ function triggerHashPush() {
 }
 
 function hashchange() {
-	console.log("EXTERNAL HASH CHANGE")
 	hashOptions = hashToDict( location.hash ? location.hash : '' )
 	for (let key of Object.keys(hashRefs)) {
 		let ref = hashRefs[key]
@@ -155,7 +152,6 @@ function hashchange() {
 	for (let key of Object.keys(hashOptions)) {
 		let ref = hashRefs[key]
 		if (ref) {
-			console.log("EXTERNAL HASH OVERWRITING " + key)
 			ref.value = enumFilter(hashOptions[key], ref.enum)
 			ref.active = true
 		}
