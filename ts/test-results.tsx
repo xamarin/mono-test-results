@@ -164,23 +164,25 @@ enum DisplaySpan {
 }
 
 class ChoiceVisibility extends Choice<Visibility> {}
-let prVisible = new Ref(Visibility.Hide)
-let massFailVisible = new Ref(Visibility.Show)
-let inProgressVisible = new Ref(Visibility.Hide)
+let prVisible = new HashRef("pr", Visibility, Visibility.Hide)
+let massFailVisible = new HashRef("massFail", Visibility, Visibility.Show)
+let inProgressVisible = new HashRef("inProgress", Visibility, Visibility.Hide)
 
 class CheckboxVisibility extends Checkbox<Visibility> {}
-let laneVisible : Ref<Visibility>[] = null
+let laneVisible : HashRef<Visibility>[] = null
 if (showLaneCheckboxes)
-	laneVisible = lanes.map(_ => new Ref(Visibility.Show))
+	laneVisible = lanes.map(lane =>
+		new HashRef(lettersOnly(lane.name), Visibility, Visibility.Show)
+	)
 
 class ChoiceGroupBy extends Choice<GroupBy> {}
-let groupBy = new Ref(GroupBy.Lanes)
+let groupBy = new HashRef("groupBy", GroupBy, GroupBy.Lanes)
 
 class ChoiceDisplaySpan extends Choice<DisplaySpan> {}
-let displaySpan = new Ref(DisplaySpan.Last48Hr)
+let displaySpan = new HashRef("span", DisplaySpan, DisplaySpan.Last48Hr)
 
-let testFilterStep = new Ref<string>(null)
-let testFilterTest = new Ref<string>(null)
+let testFilterStep = new HashRef<string>("filterTestStep", null, null)
+let testFilterTest = new HashRef<string>("filterTestCase", null, null)
 
 // Test filters
 

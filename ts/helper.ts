@@ -22,6 +22,11 @@ function isNumberChar(str:string) {
 	return numTest.test(str)
 }
 
+let letterTest = /\w/
+function lettersOnly(str:string) {
+	return str.replace(letterTest, '')
+}
+
 // Assume NaNs and infinities indicate an error somewhere
 function toNumber(str: string) {
 	let n = +str
@@ -41,7 +46,7 @@ function enumStringKeys(e) {
 class Ref<T> {
 	constructor(public value: T) {}
 	set(value: T) { this.value = value }
-	clear() { this.value = null }
+	clear() { this.set(null) }
 }
 
 // Dictionary helpers

@@ -59,7 +59,7 @@ class ClickableSpan extends React.Component<ClickableSpanProps, {}> {
 interface StringDict { [key:string]:string }
 
 let hashOptions : StringDict = emptyObject()
-let hashRefs : { [idx:string]:HashRef<any> } = emptyObject()
+let hashRefs : { [key:string]:HashRef<any> } = emptyObject()
 
 function dictToHash(dict: StringDict) {
 	let keys = Object.keys(dict).sort()
@@ -90,7 +90,7 @@ class HashRef<T> extends Ref<T> {
 	hashKey:string
 	enum: any
 	active: boolean // Has been set away from default
-	constructor(hashKey:string, _enum:any, defaultValue: T) {
+	constructor(hashKey:string, _enum:any, defaultValue:T) {
 		let overloaded = hashHas(hashKey)
 		super(overloaded ? enumFilter(hashValue(hashKey), _enum) : defaultValue)
 		this.hashKey = hashKey
@@ -101,14 +101,7 @@ class HashRef<T> extends Ref<T> {
 
 	set(value: T) {
 		this.value = value
-		this.active = true
-		triggerHashPush()
-		invalidateUi()
-	}
-
-	clear() {
-		super.clear()
-		this.active = false
+		this.active = (this.value != null)
 		triggerHashPush()
 		invalidateUi()
 	}
@@ -155,7 +148,11 @@ function triggerHashPush() {
 function hashchange() {
 	console.log("EXTERNAL HASH CHANGE")
 	hashOptions = hashToDict( location.hash ? location.hash : '' )
-	for (let key in hashOptions) {
+	for (let key of Object.keys(hashRefs)) {
+		let ref = hashRefs[key]
+		ref.active = false
+	}
+	for (let key of Object.keys(hashOptions)) {
 		let ref = hashRefs[key]
 		if (ref) {
 			console.log("EXTERNAL HASH OVERWRITING " + key)
