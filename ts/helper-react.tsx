@@ -54,7 +54,7 @@ class ClickableSpan extends React.Component<ClickableSpanProps, {}> {
 	}
 }
 
-// Config -- Put debug options (put #! after URL) in options dict
+// Get and set #hash in URL. In react-tsx because some of this calls invalidateUi
 
 interface StringDict { [key:string]:string }
 
@@ -205,7 +205,7 @@ class Choice<Key> extends React.Component<ChoiceProps<Key>, {}> {
 				children.push(<Clickable key={reactKey} label={label}
 					handler={
 						e => {
-							this.props.data.value = value
+							this.props.data.set( value )
 							invalidateUi()
 						}
 					} />)
@@ -236,7 +236,7 @@ class Checkbox<Key> extends React.Component<CheckboxProps<Key>, {}> {
 					checked={currentlyChecked}
 					onChange={
 						e => {
-							this.props.data.value = currentlyChecked ? this.props.off : this.props.on
+							this.props.data.set( currentlyChecked ? this.props.off : this.props.on )
 							invalidateUi()
 						}
 					}

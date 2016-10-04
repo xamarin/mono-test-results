@@ -342,7 +342,7 @@ class FailureFilterLink extends React.Component<FailureFilterLinkProps, {}> {
 		return <Clickable label={label} key={null} handler={
 			e => {
 				testFilter = new TestFilter(this.props.failure)
-				groupBy.value = this.props.isLane ? GroupBy.Lanes : GroupBy.Builds
+				groupBy.set( this.props.isLane ? GroupBy.Lanes : GroupBy.Builds )
 				invalidateUi()
 			}
 		} />
