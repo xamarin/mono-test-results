@@ -179,6 +179,9 @@ let groupBy = new Ref(GroupBy.Lanes)
 class ChoiceDisplaySpan extends Choice<DisplaySpan> {}
 let displaySpan = new Ref(DisplaySpan.Last48Hr)
 
+let testFilterStep = new Ref<string>(null)
+let testFilterTest = new Ref<string>(null)
+
 // Test filters
 
 class TestFilter {
@@ -200,7 +203,12 @@ class TestFilter {
 	}
 }
 
-let testFilter = null
+// FIXME: This is a nasty hack.
+function currentTestFilter() {
+	return testFilterStep.value != null || testFilterTest.value != null
+			? new TestFilter(new Failure(testFilterStep.value, testFilterTest.value))
+			: null
+}
 
 // Utility
 
@@ -297,18 +305,22 @@ let LoadingBox = React.createClass({
 
 let ReloadControl = makeReloadControl(lanes, currentlyLoading)
 
-let TestFilterDisplay = React.createClass({
-	render: function() {
-		if (!testFilter || groupBy.value == GroupBy.Failures)
+class TestFilterDisplayProps {
+	testFilter: TestFilter
+}
+class TestFilterDisplay extends React.Component<TestFilterDisplayProps, {}> {
+	render() {
+		if (!this.props.testFilter || groupBy.value == GroupBy.Failures)
 			return null
 
-		return <span> | Showing only {testFilter.display()} <Clickable label="[X]" key={null}
-			handler={e => {
-				testFilter = null
+		return <span> | Showing only {this.props.testFilter.display()} <Clickable label="[X]" key={null}
+			handler={e => { // Note: Clears global handler
+				testFilterStep.clear()
+				testFilterTest.clear()
 				invalidateUi()
 		}} /></span>
 	}
-})
+}
 
 let LaneErrorBox = React.createClass({
 	render: function() {
@@ -341,7 +353,8 @@ class FailureFilterLink extends React.Component<FailureFilterLinkProps, {}> {
 
 		return <Clickable label={label} key={null} handler={
 			e => {
-				testFilter = new TestFilter(this.props.failure)
+				testFilterStep.set( this.props.failure.step )
+				testFilterTest.set( this.props.failure.test )
 				groupBy.set( this.props.isLane ? GroupBy.Lanes : GroupBy.Builds )
 				invalidateUi()
 			}
@@ -449,6 +462,7 @@ let ContentArea = React.createClass({
 				(!laneVisible || laneVisible[lane.idx].value == Visibility.Show)
 		)
 		let dateRange = new DateRange()
+		let testFilter = currentTestFilter()
 
 		if (readyLanes.length) {
 			// FIXME: Don't do this all in one function...
@@ -663,7 +677,7 @@ registerRender( () => {
 			let value = laneVisible[idx]
 			laneCheckboxes.push(<span className="checkboxContainer">
 				<CheckboxVisibility enum={Visibility} data={value} value={value.value}
-					on={Visibility.Show} off={Visibility.Hide} 
+					on={Visibility.Show} off={Visibility.Hide}
 					label={lane.name} /> {" "}
 			</span>)
 		}
@@ -683,7 +697,7 @@ registerRender( () => {
 			PRs <ChoiceVisibility enum={Visibility} data={prVisible} value={prVisible.value} /> {" "} | {" "}
 			Mass-fails <ChoiceVisibility enum={Visibility} data={massFailVisible} value={massFailVisible.value} />
 			{inProgressChoice}
-			<TestFilterDisplay />
+			<TestFilterDisplay testFilter={currentTestFilter()} />
 			{laneCheckboxDisplay}
 		</div>
 		<LoadingBox />

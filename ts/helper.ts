@@ -41,6 +41,7 @@ function enumStringKeys(e) {
 class Ref<T> {
 	constructor(public value: T) {}
 	set(value: T) { this.value = value }
+	clear() { this.value = null }
 }
 
 // Dictionary helpers

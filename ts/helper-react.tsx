@@ -106,6 +106,13 @@ class HashRef<T> extends Ref<T> {
 		invalidateUi()
 	}
 
+	clear() {
+		super.clear()
+		this.active = false
+		triggerHashPush()
+		invalidateUi()
+	}
+
 	stringValue() {
 		if (this.enum)
 			return this.enum[this.value as any]
