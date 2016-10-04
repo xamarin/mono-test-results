@@ -75,29 +75,37 @@ function hashToDict(hash:string) : StringDict {
 		hash = hash.substring(1)
 		hash.split('&').forEach(function(x) {
 			let [key, value] = splitOne(x, '=')
-			options[key] = (value == null ? "true" : value)
+			options[decodeURIComponent(key)] = (value == null ? "true" : decodeURIComponent(value))
 		})
 	}
 	return options
+}
+
+function enumFilter(value:any, _enum:any) {
+	return (_enum ? _enum[value] : value)
 }
 
 // Use to pass an argument into a function "by reference"
 class HashRef<T> extends Ref<T> {
 	hashKey:string
 	enum: any
+	active: boolean // Has been set away from default
 	constructor(hashKey:string, _enum:any, defaultValue: T) {
-		super(defaultValue)
-		this.hashKey = hashKey;
-		this.enum = _enum;
-		hashRefs[hashKey] = this;
+		let overloaded = hashHas(hashKey)
+		super(overloaded ? enumFilter(hashValue(hashKey), _enum) : defaultValue)
+		this.hashKey = hashKey
+		this.enum = _enum
+		this.active = overloaded
+		hashRefs[hashKey] = this
 	}
 
-	setString(value:string) {
-		if (this.enum)
-			this.value = this.enum[value]
-		else
-			this.value = value as any // Assume T == string
+	set(value: T) {
+		this.value = value
+		this.active = true
+		triggerHashPush()
+		invalidateUi()
 	}
+
 	stringValue() {
 		if (this.enum)
 			return this.enum[this.value as any]
@@ -113,8 +121,42 @@ function hashValue(key:string) {
 	return hashOptions[key]
 }
 
+let needHashPush:boolean = false
+
+function tryHashPush() {
+	if (!needHashPush)
+		return
+	console.log("ATTEMPTING HASH CHANGE")
+	let newHashOptions = emptyObject()
+	for (let key in hashRefs) {
+		let ref = hashRefs[key]
+		if (ref.active)
+			newHashOptions[key] = ref.stringValue()
+	}
+	if (objectEqual(hashOptions, newHashOptions)) // Is this automatic?
+		return
+	console.log("PERFORMING HASH CHANGE")
+	hashOptions = newHashOptions
+	history.pushState(null, null, dictToHash(hashOptions))
+}
+
+function triggerHashPush() {
+	needHashPush = true
+	setTimeout(tryHashPush, 0)
+}
+
 function hashchange() {
+	console.log("EXTERNAL HASH CHANGE")
 	hashOptions = hashToDict( location.hash ? location.hash : '' )
+	for (let key in hashOptions) {
+		let ref = hashRefs[key]
+		if (ref) {
+			console.log("EXTERNAL HASH OVERWRITING " + key)
+			ref.value = enumFilter(hashOptions[key], ref.enum)
+			ref.active = true
+		}
+	}
+	invalidateUi()
 }
 
 $(window).on('hashchange', hashchange)
