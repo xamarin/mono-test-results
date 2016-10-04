@@ -96,14 +96,14 @@ class Build extends BuildStandard {
 	}
 
 	interpretMetadata(json) {
-		if ('debug' in options) console.log("Got metadata", json)
+		if (hashHas('options')) console.log("Got metadata", json)
 
 		super.interpretMetadata(json)
 	}
 
 	// See scripts/ci/babysitter in mono repo for json format
 	interpretBabysitter(jsons: any[]) {
-		if ('debug' in options) console.log("Got babysitter", jsons)
+		if (hashHas('options')) console.log("Got babysitter", jsons)
 
 		for (let json of jsons) {
 			if (json.final_code) {
@@ -247,7 +247,7 @@ class BuildListing extends Listing {
 		super()
 		this.inProgressLanes = 0
 		this.failedLanes = 0
-		this.lanes = {}
+		this.lanes = emptyObject()
 	}
 }
 
@@ -261,8 +261,8 @@ class FailureListing extends Listing {
 		super()
 		this.obj = obj
 		this.count = 0
-		this.builds = {}
-		this.lanes = {}
+		this.builds = emptyObject()
+		this.lanes = emptyObject()
 	}
 }
 
@@ -503,7 +503,7 @@ let ContentArea = React.createClass({
 
 				// List of builds, then lanes under builds, then failures under lanes.
 				case GroupBy.Builds: {
-					let buildListings: {[key:string] : BuildListing} = {}
+					let buildListings: {[key:string] : BuildListing} = emptyObject()
 					for (let lane of readyLanes) {
 						for (let build of lane.builds()) {
 							if (!buildInTimespan(build))
@@ -580,8 +580,8 @@ let ContentArea = React.createClass({
 
 				// List of failures, then builds under failures, then lanes under builds.
 				case GroupBy.Failures: {
-					let failureListings: {[key:string] : FailureListing} = {}
-					let uniqueBuilds: { [id:string]: boolean } = {}
+					let failureListings: {[key:string] : FailureListing} = emptyObject()
+					let uniqueBuilds: { [id:string]: boolean } = emptyObject()
 					let trials = 0
 
 					for (let lane of readyLanes) {

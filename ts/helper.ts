@@ -10,7 +10,7 @@ function splitOne(str:string, demarcate:string) {
 	let index = str.indexOf(demarcate)
 	if (index < 0)
 		return [str, null]
-	return [ str.substring(0,index), str.substring(index) ]
+	return [ str.substring(0,index), str.substring(index+1) ]
 }
 
 function isUpperCaseChar(str:string) {
@@ -37,9 +37,10 @@ function enumStringKeys(e) {
 }
 
 // Use to pass an argument into a function "by reference"
+// Use set() to change value because subclasses trigger effects on change
 class Ref<T> {
-	value: T
-	constructor(value: T) { this.value = value }
+	constructor(public value: T) {}
+	set(value: T) { this.value = value }
 }
 
 // Dictionary helpers
@@ -79,6 +80,25 @@ function objectValues<T>(dict: { [key: string] : T}) : T[] {
 	return Object.keys(dict).map(key => dict[key])
 }
 
+function objectSize(obj) {
+	return Object.keys(obj).length
+}
+
+// Dictionary with no default properties
+function emptyObject() { return Object.create(null) }
+
+function objectEqual<T>(x:T, y:T) {
+	if (objectSize(x) != objectSize(y))
+		return false
+	for (let key of Object.keys(x)) {
+		let vx = x[key]
+		let vy = y[key]
+		if (vx != vy)
+			return false
+	}
+	return true;
+}
+
 // Date ops
 
 function sameDay(a:Date, b:Date) {
@@ -115,25 +135,6 @@ class Listing {
 		this.dateRange = new DateRange()
 	}
 }
-
-// Config -- Put debug options (put #! after URL) in options dict
-
-let options = {}
-
-function hashchange() {
-	options = {}
-	let hash = location.hash
-	if (startsWith(hash, "#!")) {
-		hash = hash.substring(2)
-		hash.split('&').forEach(function(x) {
-			let [key, value] = splitOne(x, '=')
-			options[key] = value
-		})
-	}
-}
-
-$(window).on('hashchange', hashchange)
-hashchange()
 
 // Local storage wrappers: enforce key prefix, keep track of data-in-use
 

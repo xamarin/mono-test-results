@@ -54,6 +54,72 @@ class ClickableSpan extends React.Component<ClickableSpanProps, {}> {
 	}
 }
 
+// Config -- Put debug options (put #! after URL) in options dict
+
+interface StringDict { [key:string]:string }
+
+let hashOptions : StringDict = emptyObject()
+let hashRefs : { [idx:string]:HashRef<any> } = emptyObject()
+
+function dictToHash(dict: StringDict) {
+	let keys = Object.keys(dict).sort()
+	return '#' +
+		keys.map( key =>
+			encodeURIComponent(key) + "=" + encodeURIComponent(dict[key])
+		).join("&")
+}
+
+function hashToDict(hash:string) : StringDict {
+	let options : StringDict = emptyObject()
+	if (startsWith(hash, "#")) {
+		hash = hash.substring(1)
+		hash.split('&').forEach(function(x) {
+			let [key, value] = splitOne(x, '=')
+			options[key] = (value == null ? "true" : value)
+		})
+	}
+	return options
+}
+
+// Use to pass an argument into a function "by reference"
+class HashRef<T> extends Ref<T> {
+	hashKey:string
+	enum: any
+	constructor(hashKey:string, _enum:any, defaultValue: T) {
+		super(defaultValue)
+		this.hashKey = hashKey;
+		this.enum = _enum;
+		hashRefs[hashKey] = this;
+	}
+
+	setString(value:string) {
+		if (this.enum)
+			this.value = this.enum[value]
+		else
+			this.value = value as any // Assume T == string
+	}
+	stringValue() {
+		if (this.enum)
+			return this.enum[this.value as any]
+		return ""+this.value
+	}
+}
+
+function hashHas(key:string) {
+	return key in hashOptions
+}
+
+function hashValue(key:string) {
+	return hashOptions[key]
+}
+
+function hashchange() {
+	hashOptions = hashToDict( location.hash ? location.hash : '' )
+}
+
+$(window).on('hashchange', hashchange)
+hashchange()
+
 /* FIXME: I'm not sure why "value" had to be passed in explicitly; it ought to
  * be derivable from data, but when I tried that I didn't get rerenders. Maybe
  * I am not using React correctly here. --Andi */

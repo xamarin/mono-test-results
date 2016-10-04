@@ -69,7 +69,7 @@ function deletionQueueRegister(date:number, buildTag:string) {
 	}
 }
 
-let deletionIndex : { [buildTag:string] : string[] } = {}
+let deletionIndex : { [buildTag:string] : string[] } = emptyObject()
 
 function deletionIndexAdd(buildTag:string, kind:string) {
 	if (!(buildTag in deletionIndex))
@@ -100,7 +100,7 @@ function localStorageWhittle(downTo: number, date: number) {
 		}
 
 		if (date <= target.date) { // FIXME: This is ridiculously unlikely, and if we hit it something else is probably wrong.
-			if ('debug' in options) console.log("Tried to lower localstorage cache to goal "+downTo+", but the oldest item in the cache ("+target.date+") is no older than the replacement one ("+date+"), so cancelled.")
+			if (hashHas('debug')) console.log("Tried to lower localstorage cache to goal "+downTo+", but the oldest item in the cache ("+target.date+") is no older than the replacement one ("+date+"), so cancelled.")
 			return false
 		}
 
@@ -108,7 +108,7 @@ function localStorageWhittle(downTo: number, date: number) {
 		deletionQueue.deq()
 		deletionIndexClear(target.buildTag)
 
-		if ('debug' in options) console.log("Clearing space in localstorage cache (goal "+downTo+"): Forgot build", target.buildTag, "local storage now", localStorageUsage())
+		if (hashHas('debug')) console.log("Clearing space in localstorage cache (goal "+downTo+"): Forgot build", target.buildTag, "local storage now", localStorageUsage())
 	}
 
 	return true
@@ -291,11 +291,11 @@ class Lane<B extends BuildBase> {
 	visible() { return this.status.loaded || this.everLoaded }
 
 	load() {
-		if ('debug' in options) console.log("lane loading url", this.apiUrl)
+		if (hashHas('debug')) console.log("lane loading url", this.apiUrl)
 		$.get(this.apiUrl, laneResult => {
 			this.status.loaded = true
 			this.everLoaded = true
-			if ('debug' in options) console.log("lane loaded url", this.apiUrl, "result:", laneResult)
+			if (hashHas('debug')) console.log("lane loaded url", this.apiUrl, "result:", laneResult)
 			let queries = 0
 
 			this.buildsRemaining = Math.min(laneResult.builds.length, maxBuildQueries)
@@ -327,11 +327,11 @@ class Lane<B extends BuildBase> {
 							return
 						}
 
-						if ('debug' in options) console.log("build", build.id, "for lane", this.name, "loading", tag, "url", url)
+						if (hashHas('debug')) console.log("build", build.id, "for lane", this.name, "loading", tag, "url", url)
 
 						// Notice this fetches *text*
 						$.get(url, fetchResult => {
-							if ('debug' in options) console.log("build loaded url", url, "result length:", fetchResult.length)
+							if (hashHas('debug')) console.log("build loaded url", url, "result length:", fetchResult.length)
 
 							let mayStore = false
 							status.loaded = true
