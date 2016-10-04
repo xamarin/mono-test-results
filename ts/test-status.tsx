@@ -205,8 +205,10 @@ let StatusArea = React.createClass({
 			let loadingDisplay = !readyDisplay.length && !inProgressDisplay.length ? loadingIcon : null
 
 			return <div>
-				<hr />
-				<p className="pageCategory">Most recent build:</p>
+				<p className="pageCategory">
+					Most recent build:
+					<StatusReloadControl />
+				</p>
 				{readyDisplay}
 				{inProgressDisplay}
 				{loadingDisplay}
@@ -220,10 +222,8 @@ let StatusArea = React.createClass({
 
 registerRender( () => {
 	ReactDOM.render(<div>
-		<div>
-			<TitleBar />
-			<StatusReloadControl />
-		</div>
+		<TitleBar />
+		<hr />
 		<StatusArea />
 	</div>, document.getElementById('content'))
 })

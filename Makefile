@@ -16,7 +16,7 @@ LZ_URL = https://raw.githubusercontent.com/pieroxy/lz-string/$(LZ_VERSION)/libs/
 PQ_URL = https://raw.githubusercontent.com/janogonzalez/priorityqueuejs/$(PQ_VERSION)/index.js
 
 all: install/index.html install/style.css install/failures.html install/failures-plus.html \
-	 install/js/test-results.js install/js/test-download.js \
+	 install/js/test-results.js install/js/test-status.js install/js/test-download.js \
 	 install/js/helper.js install/js/helper-react.js install/js/breakout.js \
 	 install/js/react-dom.js install/js/react.js install/js/jquery.js \
 	 install/js/lz.js install/js/priorityqueue.js
