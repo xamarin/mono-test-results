@@ -151,14 +151,6 @@ function jenkinsBuildUrl(lane:string, id:string) {
 	return jenkinsBuildBaseUrl(lane, id) + "/api/json?tree=actions[individualBlobs[*],parameters[*],lastBuiltRevision[*],remoteUrls[*]],timestamp,building,result"
 }
 
-function jenkinsBabysitterLegacyUrl(lane:string, id:string) {
-	return jenkinsBuildBaseUrl(lane, id) + "/artifact/babysitter_report.json_lines"
-}
-
-function jenkinsBabysitterUrl(lane:string, id:string) {
-	return jenkinsBuildBaseUrl(lane, id) + "/Azure/processDownloadRequest" + "/" + lane + "/" + id + "/babysitter_report.json_lines"
-}
-
 let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 	["Mac Intel64",     "test-mono-mainline/label=osx-amd64",               "test-mono-pull-request-amd64-osx"],
 	["Mac Intel32",     "test-mono-mainline/label=osx-i386",                "test-mono-pull-request-i386-osx"],
@@ -244,6 +236,7 @@ class BuildBase {
 	// Subclasses should overload these to parse out the data they need
 	interpretMetadata(json) { }
 	interpretBabysitter(jsons: any[]) { }
+	babysitterUrl() : string { return null }
 }
 
 // The type of the class object for a class that inherits from BuildBase
@@ -383,9 +376,11 @@ class Lane<B extends BuildBase> {
 
 								// 404s (but not other failure modes) are treated as permanent and cached
 								let babysitter404Key = cachePrefix + buildTag + "!babysitter404"
-								if (!localStorageGetItem(babysitter404Key)) {
+								let babysitterIs404 = localStorageGetItem(babysitter404Key)
+								let babysitterUrl = babysitterIs404 ? null : build.babysitterUrl()
+								if (!babysitterIs404 && babysitterUrl != null) {
 									// Fetch babysitter report
-									fetchData("babysitter", jenkinsBabysitterUrl(this.tag, build.id), build.babysitterStatus,
+									fetchData("babysitter", babysitterUrl, build.babysitterStatus,
 										(result:string) => {
 											build.interpretBabysitter(jsonLines(result))
 											this.buildsRemaining-- // Got a babysitter report, processing done
@@ -484,6 +479,7 @@ class BuildStandard extends BuildBase {
 	pr: string
 	prUrl: string
 	prTitle: string
+	babysitterBlobUrl: string
 
 	interpretMetadata(json) {
 		this.date = new Date(+json.timestamp)
@@ -517,6 +513,15 @@ class BuildStandard extends BuildBase {
 					// There will be typically be one array entry for the standards suite repo and one array entry for the "real" git repo
 					if (action.lastBuiltRevision && action.remoteUrls && gitRepoMatches(action.remoteUrls)) {
 						gitHash = action.lastBuiltRevision.SHA1
+					}
+				} else if (action._class == "com.microsoftopentechnologies.windowsazurestorage.AzureBlobAction") {
+					let blobs = action.individualBlobs
+					if (blobs) {
+						for (let blob of blobs) {
+							let url = blob.blobURL
+							if (url.endsWith("babysitter_report.json_lines"))
+								this.babysitterBlobUrl = url
+						}
 					}
 				}
 			}
@@ -557,5 +562,9 @@ class BuildStandard extends BuildBase {
 		if (this.gitHash)
 			return "https://github.com/mono/mono/commit/" + this.gitHash
 		return "https://github.com/mono/mono" // Lane is misconfigured
+	}
+
+	babysitterUrl() {
+		return this.babysitterBlobUrl
 	}
 }
