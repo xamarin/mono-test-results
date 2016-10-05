@@ -148,6 +148,7 @@ let lanes = makeLanes(Build)
 enum GroupBy {
 	Lanes,
 	Builds,
+	PRs,
 	Failures,
 }
 
@@ -183,6 +184,7 @@ let displaySpan = new HashRef("span", DisplaySpan, DisplaySpan.Last48Hr)
 
 let testFilterStep = new HashRef<string>("filterTestStep", null, null)
 let testFilterTest = new HashRef<string>("filterTestCase", null, null)
+let prFilter = new HashRef<string>("filterPr", null, null)
 
 // Test filters
 
@@ -427,9 +429,9 @@ class BuildFailures extends React.Component<BuildFailuresProps, BuildFailuresSta
 			else if (build.babysitterStatus.failed)
 				failureDisplay = <i className="noLoad">(Test data did not load)</i>
 
-			let linkJenkinsDisplay = anyNonBuildFailures(this.props.build) ?
-					linkJenkins(this.props.lane, this.props.build) :
-					null
+			let linkJenkinsDisplay = anyNonBuildFailures(this.props.build)
+				? linkJenkins(this.props.lane, this.props.build)
+				: null
 
 			return <li key={key} className="buildResult">
 				{buildLink} {formatDate(build.date)},{" "}
@@ -492,9 +494,9 @@ let ContentArea = React.createClass({
 						readyBuilds = readyBuilds.sort(
 							(a:Build,b:Build) => (+b.date) - (+a.date))
 
-						let loader = (loadedBuilds.length < builds.length) ?
-							<li className="loading">{loadingIcon}</li> :
-							null
+						let loader = (loadedBuilds.length < builds.length)
+							? <li className="loading">{loadingIcon}</li>
+							: null
 						let buildList = readyBuilds.map(build => {
 							dateRange.add(build.date) // Side effects in a map? Ew
 
@@ -630,12 +632,12 @@ let ContentArea = React.createClass({
 						.map( key => {
 							let failureListing = failureListings[key]
 							let failure = failureListing.obj
-							let title = failure.test ?
-								<div>
+							let title = failure.test
+								? <div>
 										<div className="failedTestName">{failure.test}</div>
 										while running <span className="invocation">{failure.step}</span>
-								</div> :
-								<div className="invocation">{failure.step}</div>
+								  </div>
+								: <div className="invocation">{failure.step}</div>
 
 							return <li className="failure" key={key}>
 								{title}
@@ -655,19 +657,30 @@ let ContentArea = React.createClass({
 						</ul>
 					</div>
 				}
+
+				case GroupBy.PRs: {
+					return null
+				}
 			}
-		} else {
-			return null
 		}
+
+		return null
 	}
 })
 
 registerRender( () => {
-	let inProgressChoice = groupBy.value != GroupBy.Failures ?
-		<span>{" "}|{" "}
+	let inProgressChoice = groupBy.value != GroupBy.Failures
+		? <span>
+			{" "}|{" "}
 			In progress <ChoiceVisibility enum={Visibility} data={inProgressVisible} value={inProgressVisible.value} />
-		</span> :
-		null
+		  </span>
+		: null
+	let prChoice = groupBy.value != GroupBy.PRs
+		? <span>
+			{" "}|{" "}
+			PRs <ChoiceVisibility enum={Visibility} data={prVisible} value={prVisible.value} />
+		  </span>
+		: null
 
 	let laneCheckboxDisplay = null
 	if (laneVisible) {
@@ -696,8 +709,8 @@ registerRender( () => {
 			Timespan: <ChoiceDisplaySpan enum={DisplaySpan} data={displaySpan} value={displaySpan.value} />
 			<br />
 			Filters:
-			PRs <ChoiceVisibility enum={Visibility} data={prVisible} value={prVisible.value} /> {" "} | {" "}
 			Mass-fails <ChoiceVisibility enum={Visibility} data={massFailVisible} value={massFailVisible.value} />
+			{prChoice}
 			{inProgressChoice}
 			<TestFilterDisplay testFilter={currentTestFilter()} />
 			{laneCheckboxDisplay}

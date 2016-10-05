@@ -191,7 +191,10 @@ class Choice<Key> extends React.Component<ChoiceProps<Key>, {}> {
 			let label = key[0]
 			for (let i = 1; i < key.length; i++) {
 				let ch = key[i]
-				if (isUpperCaseChar(ch) || (isNumberChar(ch) && !isNumberChar(key[i-1]))) {
+				// Split immediately before: the first number in any series, or any single capital letter
+				if ((isUpperCaseChar(ch) && !isUpperCaseChar(key[i-1]) &&
+						!(i+1 < key.length && isUpperCaseChar(key[i+1])))
+					|| (isNumberChar(ch) && !isNumberChar(key[i-1]))) {
 					label += " "
 					label += ch.toLowerCase()
 				} else {
