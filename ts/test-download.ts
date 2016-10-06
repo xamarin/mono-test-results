@@ -479,6 +479,7 @@ class BuildStandard extends BuildBase {
 	pr: string
 	prUrl: string
 	prTitle: string
+	prAuthor: string
 	babysitterBlobUrl: string
 
 	interpretMetadata(json) {
@@ -502,6 +503,9 @@ class BuildStandard extends BuildBase {
 								break
 							case "ghprbPullTitle":
 								this.prTitle = param.value
+								break
+							case "ghprbPullAuthorLogin":
+								this.prAuthor = param.value
 								break
 							case "ghprbActualCommit":
 								prHash = param.value

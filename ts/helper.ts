@@ -37,6 +37,9 @@ function toNumber(str: string) {
 
 // Typescript ops
 
+interface StringDict  { [key:string]:string }
+interface BooleanDict { [key:string]:boolean }
+
 function enumStringKeys(e) {
 	return Object.keys(e).filter(key => typeof e[key] === "number")
 }

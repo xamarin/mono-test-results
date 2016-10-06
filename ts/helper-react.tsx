@@ -56,8 +56,6 @@ class ClickableSpan extends React.Component<ClickableSpanProps, {}> {
 
 // Get and set #hash in URL. In react-tsx because some of this calls invalidateUi
 
-interface StringDict { [key:string]:string }
-
 let hashOptions : StringDict = emptyObject()
 let hashRefs : { [key:string]:HashRef<any> } = emptyObject()
 

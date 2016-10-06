@@ -218,7 +218,8 @@ function currentTestFilter() {
 
 function filterLanes() {
 	return lanes.filter( lane =>
-		(prVisible.value == Visibility.Show || !lane.isPr)
+		(prVisible.value == Visibility.Show || !lane.isPr
+		 || groupBy.value == GroupBy.PRs)
 	)
 }
 
@@ -262,6 +263,27 @@ class BuildListing extends Listing {
 		this.lanes = emptyObject()
 	}
 }
+interface BuildListingDict { [key:string] : BuildListing }
+
+class PrListing extends Listing {
+	builds: BuildListingDict
+
+	constructor() {
+		super()
+		this.builds = emptyObject()
+	}
+}
+interface PrListingDict { [key:string] : PrListing }
+
+function filterBuildListingsForInProgress(buildListings: BuildListingDict) {
+	let filteredBuildListings: BuildListingDict = emptyObject()
+	for (let key of Object.keys(buildListings)) {
+		let value = buildListings[key]
+		if (value.inProgressLanes == 0) // TODO: Demand a certain # of lanes
+			filteredBuildListings[key] = value
+	}
+	return filteredBuildListings
+}
 
 class FailureListing extends Listing {
 	count: number
@@ -277,6 +299,7 @@ class FailureListing extends Listing {
 		this.lanes = emptyObject()
 	}
 }
+interface FailureListingDict { [key:string] : FailureListing }
 
 let isMakeLine = /make (?:-j\d+ )?-w V=1/
 
@@ -447,9 +470,9 @@ class BuildFailures extends React.Component<BuildFailuresProps, BuildFailuresSta
 	}
 }
 
-function linkFor(build: Build, parens=true) {
+function linkFor(build: Build, parens=true, allowPrTitle=true) {
 	let title = build.prTitle ? build.prTitle : build.gitHash
-	let display = build.pr ? `PR ${build.pr}` :  (parens?"":"Commit ") + build.gitDisplay()
+	let display = build.pr && allowPrTitle ? `PR ${build.pr}` :  (parens?"":"Commit ") + build.gitDisplay()
 	return <span className="sourceLink">{parens?"(":""}<A href={build.gitUrl()} title={title}>{display}</A>{parens?")":""}</span>
 }
 
@@ -521,7 +544,7 @@ let ContentArea = React.createClass({
 
 				// List of builds, then lanes under builds, then failures under lanes.
 				case GroupBy.Builds: {
-					let buildListings: {[key:string] : BuildListing} = emptyObject()
+					let buildListings: BuildListingDict = emptyObject()
 					for (let lane of readyLanes) {
 						for (let build of lane.builds()) {
 							if (!buildInTimespan(build))
@@ -545,15 +568,9 @@ let ContentArea = React.createClass({
 						}
 					}
 
-					if (inProgressVisible.value == Visibility.Hide) {
-						let filteredBuildListings: {[key:string] : BuildListing} = {}
-						for (let key of Object.keys(buildListings)) {
-							let value = buildListings[key]
-							if (value.inProgressLanes == 0) // TODO: Demand a certain # of lanes
-								filteredBuildListings[key] = value
-						}
-						buildListings = filteredBuildListings
-					}
+					// Filtering for "in progress" happens late because all lanes must be scanned first
+					if (inProgressVisible.value == Visibility.Hide)
+						buildListings = filterBuildListingsForInProgress(buildListings)
 
 					let buildDisplay = Object.keys(buildListings).sort(dateRangeLaterCmpFor(buildListings)).map(buildKey => {
 						let extra: JSX.Element = null
@@ -598,7 +615,7 @@ let ContentArea = React.createClass({
 
 				// List of failures, then builds under failures, then lanes under builds.
 				case GroupBy.Failures: {
-					let failureListings: {[key:string] : FailureListing} = emptyObject()
+					let failureListings: FailureListingDict = emptyObject()
 					let uniqueBuilds: { [id:string]: boolean } = emptyObject()
 					let trials = 0
 
@@ -658,8 +675,127 @@ let ContentArea = React.createClass({
 					</div>
 				}
 
+				// List of PRs, which in practice is similar to a list of builds, but with access to extended failure info
 				case GroupBy.PRs: {
-					return null
+					let failureListings: FailureListingDict = emptyObject()
+					let uniqueBuilds: { [id:string]: boolean } = emptyObject()
+					let prListings: PrListingDict = emptyObject()
+					let trials = 0
+
+					// FIXME: Some code duplication here. Can this be merged?
+					for (let lane of readyLanes) {
+						for (let build of lane.builds()) {
+							// Filter builds
+							if (lane.isPr && prFilter.value) {
+								// FIXME: Should builds that took place after the PR build be filtered?
+								if (build.pr != prFilter.value)
+									continue
+							} else {
+								if (!buildInTimespan(build))
+									continue
+								if (massFailVisible.value == Visibility.Hide && build.massFailed())
+									continue
+							}
+
+							// Process builds
+							if (lane.isPr) {
+								let prListing = getOrDefault(prListings, build.pr,
+									() => new PrListing())
+								let buildListing = getOrDefault(prListing.builds, build.buildTag(),
+									() => new BuildListing())
+
+								if (build.failures.length)
+									buildListing.failedLanes++
+								if (build.inProgress())
+									buildListing.inProgressLanes++
+
+//								dateRange.add(build.date)
+								buildListing.dateRange.add(build.date)
+								buildListing.lanes[lane.idx] = build
+							} else {
+								if (build.inProgress())
+									continue
+
+								trials++
+								dateRange.add(build.date)
+								uniqueBuilds[build.buildTag()] = true
+
+								for (let failure of build.failures) {
+									if (buildFailure(failure))
+										continue
+
+									let failureKey = failure.key()
+									let failureListing = getOrDefault(failureListings, failureKey,
+										() => new FailureListing(failure))
+									failureListing.dateRange.add(build.date)
+									failureListing.count++
+									failureListing.lanes[lane.idx] = true
+									failureListing.builds[build.buildTag()] = true
+								}
+							}
+						}
+					}
+
+					if (!prFilter.value && inProgressVisible.value == Visibility.Hide) {
+						let filteredPrListings: PrListingDict = emptyObject()
+						for (let key of Object.keys(prListings)) {
+							let value = prListings[key]
+							let buildListings = filterBuildListingsForInProgress(value.builds)
+							if (objectSize(buildListings) > 0) {
+								value.builds = buildListings // KLUDGE: This mutates the old value
+								filteredPrListings[key] = value
+							}
+						}
+						prListings = filteredPrListings
+					}
+
+					let prDisplay = Object.keys(prListings).sort(dateRangeLaterCmpFor(prListings)).map(prKey => {
+						let prListing = prListings[prKey]
+						let buildListings = prListing.builds
+						let prExtra : JSX.Element = null
+
+						let buildDisplay = Object.keys(buildListings).sort(dateRangeLaterCmpFor(buildListings)).map(buildKey => {
+							let extra: JSX.Element = null
+							let buildListing = buildListings[buildKey]
+							let laneDisplay = Object.keys(buildListing.lanes).sort(numericSort).map(laneIdx => {
+								let build = buildListing.lanes[laneIdx]
+								let lane = lanes[laneIdx]
+
+								if (!prExtra)
+									prExtra = <p>
+										<b>{linkFor(build, false)}</b>, {build.prAuthor}: <b>{build.prTitle}</b>
+									</p>
+
+								if (!extra)
+									extra = <p><b>{linkFor(build, false, false)}</b></p>
+
+								return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} />
+							})
+
+							if (!extra)
+								extra = <span>Unknown</span>
+
+							return <div className="verboseBuild" key={buildKey}>
+								{extra}
+								<ul>
+									{laneDisplay}
+								</ul>
+							</div>
+						})
+
+						// FIXME: Don't blockquote, use a div with a left margin
+						return <div key={prKey}>
+							{prExtra}
+							<blockquote>
+								{buildDisplay}
+							</blockquote>
+						</div>
+					})
+
+					return <div>
+						<p>Comparing builds from {formatRange(dateRange)}</p>
+						{prDisplay}
+					</div>
 				}
 			}
 		}
