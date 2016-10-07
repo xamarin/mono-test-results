@@ -408,7 +408,7 @@ class FailureFilterLink extends React.Component<FailureFilterLinkProps, {}> {
 	}
 }
 
-function renderFailureBasic(failure: Failure, extra:JSX.Element=null) {
+function renderFailureBase(failure: Failure, extra:JSX.Element=null) {
 	let testLine = failure.test ? <div className="failedTestName">{failure.test}</div> : null
 	let key = failure.step + "!" + failure.test
 	return <li key={key} className="failure">
@@ -418,6 +418,10 @@ function renderFailureBasic(failure: Failure, extra:JSX.Element=null) {
 		{testLine}
 		{extra}
 	</li>
+}
+
+function renderFailureStandard(failure: Failure) {
+	return renderFailureBase(failure)
 }
 
 class BuildFailuresProps {
@@ -442,7 +446,7 @@ class BuildFailures extends React.Component<BuildFailuresProps, BuildFailuresSta
 		let build = this.props.build
 		let key = this.props.key
 		let buildLink = <span><A href={build.displayUrl} title={null}>{this.props.linkLabel}</A> {this.props.extraLabel}</span>
-		let renderFailure = this.props.renderFailure ? this.props.renderFailure : renderFailureBasic
+		let renderFailure = this.props.renderFailure ? this.props.renderFailure : renderFailureStandard
 
 		if (!build.metadataStatus.failed) {
 			let failures: JSX.Element[]
@@ -774,34 +778,42 @@ let ContentArea = React.createClass({
 					function renderFailure(failure:Failure) {
 						let failureListing = failureListings[failure.key()]
 
-						if (!failureListing) // Kludge
-							failureListing = new FailureListing(failure)
+						let extra:JSX.Element = null
 
-						let verdict:JSX.Element = null
+						if (buildFailure(failure)) {
+							extra = <div>
+								PR caused failure? <span className="failedTestVerdict">Probably, this is a build failure</span>
+							</div>
+						} else if (!failureListing || failureListing.count == 0) {
+							extra = <div>
+								Recently failed on <b>0/{trials} runs</b>;{" "}
+								<b>0/{readyLanes.length} lanes</b>; <b>0/{countKeys(uniqueBuilds)} builds</b>
+								<br />
+								PR caused failure? <span className="failedTestVerdict">Probably</span>, no other recent failures
+							</div>
+						} else {
+							let verdict:JSX.Element = null
 
-						if (failureListing.count > 0) {
 							if (failure.test) {
 								verdict = <span><b>Probably not</b>, other recent failures</span>
 							} else {
 								verdict = <span><b>Maybe</b>, recent failures in same suite may or may not be the same</span>
 							}
-						} else {
-							verdict = <span><span className="failedTestVerdict">Probably</span>, no other recent failures</span>
+
+							extra = <div>
+								Recently failed on <b>{failureListing.count}/{trials} runs</b>;{" "}
+								<FailureFilterLink count={countKeys(failureListing.lanes)}
+								of={readyLanes.length} isLane={true} failure={failure} />
+								; <FailureFilterLink count={countKeys(failureListing.builds)}
+								of={countKeys(uniqueBuilds)} isLane={false} failure={failure} />
+								<br />
+								PR caused failure? {verdict}
+								<br />
+								<span className="datetime">Most recent failure: {failureListing.dateRange.late ? formatDate(failureListing.dateRange.late) : <span>never</span>}</span>
+							</div>
 						}
 
-						let extra = <div>
-							Recently failed on <b>{failureListing.count}/{trials} runs</b>;{" "}
-							<FailureFilterLink count={countKeys(failureListing.lanes)}
-							of={readyLanes.length} isLane={true} failure={failure} />
-							; <FailureFilterLink count={countKeys(failureListing.builds)}
-							of={countKeys(uniqueBuilds)} isLane={false} failure={failure} />
-							<br />
-							PR caused failure? {verdict}
-							<br />
-							<span className="datetime">Most recent failure: {failureListing.dateRange.late ? formatDate(failureListing.dateRange.late) : <span>never</span>}</span>
-						</div>
-
-						return renderFailureBasic(failure, extra)
+						return renderFailureBase(failure, extra)
 					}
 
 					let prDisplay = Object.keys(prListings).sort(dateRangeLaterCmpFor(prListings)).map(prKey => {
@@ -830,7 +842,7 @@ let ContentArea = React.createClass({
 							if (!extra)
 								extra = <span>Unknown</span>
 
-							return <div className="verboseBuild" key={buildKey}>
+							return <div className="verbosePr" key={buildKey}>
 								{extra}
 								<ul>
 									{laneDisplay}
