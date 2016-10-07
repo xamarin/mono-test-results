@@ -1,9 +1,10 @@
 /// <reference path="./test-download.ts" />
 /// <reference path="./helper-react.tsx" />
 
-// Constants
+const before_collapse_standard = 5
+const before_collapse_pr = 100
 
-const max_failures_unexpanded = 5
+// Constants
 
 declare var overloadShowLaneCheckboxes : number
 const showLaneCheckboxes = typeof overloadShowLaneCheckboxes !== 'undefined' ? overloadShowLaneCheckboxes : false
@@ -430,6 +431,7 @@ class BuildFailuresProps {
 	key: string
 	linkLabel: string
 	extraLabel: JSX.Element
+	beforeCollapse: number
 	renderFailure: (failure: Failure) => JSX.Element
 }
 
@@ -452,8 +454,8 @@ class BuildFailures extends React.Component<BuildFailuresProps, BuildFailuresSta
 			let failures: JSX.Element[]
 			let failureDisplay : JSX.Element = null
 
-			if (!this.state.expand && build.failures.length > max_failures_unexpanded) {
-				let showCount = max_failures_unexpanded - 1 // Never show "1 more failures"
+			if (!this.state.expand && build.failures.length > this.props.beforeCollapse) {
+				let showCount = this.props.beforeCollapse - 1 // Never show "1 more failures"
 				let failureSlice = build.failures.slice(0, showCount)
 				let label = "[" + (build.failures.length - showCount)
 					+ " more failures]"
@@ -550,7 +552,7 @@ let ContentArea = React.createClass({
 							dateRange.add(build.date) // Side effects in a map? Ew
 
 							let linkLabel = "Build " + build.id
-							return <BuildFailures lane={lane} build={build} key={build.id} linkLabel={linkLabel} extraLabel={linkFor(build)} renderFailure={null}/>
+							return <BuildFailures lane={lane} build={build} key={build.id} linkLabel={linkLabel} extraLabel={linkFor(build)} beforeCollapse={before_collapse_standard} renderFailure={null}/>
 						})
 
 						return <div className="verboseLane" key={lane.tag}>
@@ -608,7 +610,7 @@ let ContentArea = React.createClass({
 							if (!extra)
 								extra = linkFor(build, false)
 
-							return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} renderFailure={null} />
+							return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} beforeCollapse={before_collapse_standard} renderFailure={null} />
 						})
 
 						if (!extra)
@@ -836,7 +838,7 @@ let ContentArea = React.createClass({
 								if (!extra)
 									extra = <p><b>{linkFor(build, false, false)}</b></p>
 
-								return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} renderFailure={renderFailure} />
+								return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} beforeCollapse={before_collapse_pr} renderFailure={renderFailure} />
 							})
 
 							if (!extra)
