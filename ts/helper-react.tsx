@@ -280,9 +280,9 @@ function formatRange(range: DateRange) {
 
 let titleBarSpec = [
 	["index.html", "Quick status"],
-	["failures.html", "Failure logs"],
-	["failures-plus.html", "Failure logs (special configurations)"],
-	["failures-4.8.html", "Failure logs (4.8 branch)"],
+	["builds.html", "Build logs"],
+	["builds-plus.html", "Build logs (special configurations)"],
+	["builds-4.8.html", "Build logs (4.8 branch)"],
 	// ["https://jenkins.mono-project.com/view/All/job/jenkins-testresult-viewer/", "Source"]
 ]
 

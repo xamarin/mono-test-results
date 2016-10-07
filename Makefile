@@ -15,7 +15,7 @@ JQUERY_URL  = http://code.jquery.com/jquery-$(JQUERY_VERSION).js
 LZ_URL = https://raw.githubusercontent.com/pieroxy/lz-string/$(LZ_VERSION)/libs/lz-string.min.js
 PQ_URL = https://raw.githubusercontent.com/janogonzalez/priorityqueuejs/$(PQ_VERSION)/index.js
 
-all: install/index.html install/style.css install/failures.html install/failures-plus.html \
+all: install/index.html install/style.css install/builds.html install/builds-plus.html \
 	 install/js/test-results.js install/js/test-status.js install/js/test-download.js \
 	 install/js/helper.js install/js/helper-react.js install/js/breakout.js \
 	 install/js/react-dom.js install/js/react.js install/js/jquery.js \
@@ -25,7 +25,7 @@ tsd:
 	tsd init
 	tsd install react-global jquery --save
 
-install/index.html install/style.css install/failures.html install/failures-plus.html: static/index.html static/style.css static/failures.html static/failures-plus.html
+install/index.html install/style.css install/builds.html install/builds-plus.html: static/index.html static/style.css static/builds.html static/builds-plus.html
 	rsync -urhi --exclude=.DS_Store static/ install/
 
 install/js/react.js:
