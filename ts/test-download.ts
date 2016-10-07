@@ -560,8 +560,8 @@ class BuildStandard extends BuildBase {
 		return this.gitHash ? this.gitHash.slice(0,6) : "[UNKNOWN]"
 	}
 
-	gitUrl() {
-		if (this.prUrl)
+	gitUrl(allowPr=true) {
+		if (allowPr && this.prUrl)
 			return this.prUrl
 		if (this.gitHash)
 			return "https://github.com/mono/mono/commit/" + this.gitHash

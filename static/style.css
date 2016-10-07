@@ -83,7 +83,7 @@ li.failureExpand a {
 	color:#AAAAAA;
 }
 
-.failedTestName {
+.failedTestName, .failedTestVerdict {
 	font-weight:bold;
 	color:#CC0000;
 }

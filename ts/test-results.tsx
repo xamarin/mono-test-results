@@ -332,22 +332,41 @@ let LoadingBox = React.createClass({
 
 let ReloadControl = makeReloadControl(lanes, currentlyLoading)
 
+function showingOnly(display:JSX.Element, clear: ()=>void) {
+	return <span> | Showing only {display} <Clickable label="[X]" key={null}
+		handler={e => { // Note: Clears global handler
+			clear()
+			invalidateUi()
+	}} /></span>
+}
+
 class TestFilterDisplayProps {
 	testFilter: TestFilter
 }
 class TestFilterDisplay extends React.Component<TestFilterDisplayProps, {}> {
 	render() {
-		if (!this.props.testFilter || groupBy.value == GroupBy.Failures)
+		if (!this.props.testFilter || groupBy.value == GroupBy.Failures || groupBy.value == GroupBy.PRs)
 			return null
 
-		return <span> | Showing only {this.props.testFilter.display()} <Clickable label="[X]" key={null}
-			handler={e => { // Note: Clears global handler
-				testFilterStep.clear()
-				testFilterTest.clear()
-				invalidateUi()
-		}} /></span>
+		return showingOnly(this.props.testFilter.display(), () => {
+			// Note: Clears global handler
+			testFilterStep.clear()
+			testFilterTest.clear()
+		})
 	}
 }
+
+class PrFilterDisplay extends React.Component<{}, {}> {
+	render() {
+		if (!prFilter.value || groupBy.value != GroupBy.PRs)
+			return null
+
+		return showingOnly(<b>PR {prFilter.value}</b>, () => {
+			prFilter.clear()
+		})
+	}
+}
+
 
 let LaneErrorBox = React.createClass({
 	render: function() {
@@ -389,7 +408,7 @@ class FailureFilterLink extends React.Component<FailureFilterLinkProps, {}> {
 	}
 }
 
-function renderFailure(failure: Failure) {
+function renderFailureBasic(failure: Failure, extra:JSX.Element=null) {
 	let testLine = failure.test ? <div className="failedTestName">{failure.test}</div> : null
 	let key = failure.step + "!" + failure.test
 	return <li key={key} className="failure">
@@ -397,6 +416,7 @@ function renderFailure(failure: Failure) {
 			{failureDescribe(failure.kind)} while running <span className="invocation">{failure.step}</span>
 		</div>
 		{testLine}
+		{extra}
 	</li>
 }
 
@@ -406,6 +426,7 @@ class BuildFailuresProps {
 	key: string
 	linkLabel: string
 	extraLabel: JSX.Element
+	renderFailure: (failure: Failure) => JSX.Element
 }
 
 class BuildFailuresState {
@@ -421,6 +442,7 @@ class BuildFailures extends React.Component<BuildFailuresProps, BuildFailuresSta
 		let build = this.props.build
 		let key = this.props.key
 		let buildLink = <span><A href={build.displayUrl} title={null}>{this.props.linkLabel}</A> {this.props.extraLabel}</span>
+		let renderFailure = this.props.renderFailure ? this.props.renderFailure : renderFailureBasic
 
 		if (!build.metadataStatus.failed) {
 			let failures: JSX.Element[]
@@ -473,7 +495,7 @@ class BuildFailures extends React.Component<BuildFailuresProps, BuildFailuresSta
 function linkFor(build: Build, parens=true, allowPrTitle=true) {
 	let title = build.prTitle ? build.prTitle : build.gitHash
 	let display = build.pr && allowPrTitle ? `PR ${build.pr}` :  (parens?"":"Commit ") + build.gitDisplay()
-	return <span className="sourceLink">{parens?"(":""}<A href={build.gitUrl()} title={title}>{display}</A>{parens?")":""}</span>
+	return <span className="sourceLink">{parens?"(":""}<A href={build.gitUrl(allowPrTitle)} title={title}>{display}</A>{parens?")":""}</span>
 }
 
 function linkJenkins(lane: Lane<Build>, build: Build) {
@@ -524,7 +546,7 @@ let ContentArea = React.createClass({
 							dateRange.add(build.date) // Side effects in a map? Ew
 
 							let linkLabel = "Build " + build.id
-							return <BuildFailures lane={lane} build={build} key={build.id} linkLabel={linkLabel} extraLabel={linkFor(build)}/>
+							return <BuildFailures lane={lane} build={build} key={build.id} linkLabel={linkLabel} extraLabel={linkFor(build)} renderFailure={null}/>
 						})
 
 						return <div className="verboseLane" key={lane.tag}>
@@ -582,7 +604,7 @@ let ContentArea = React.createClass({
 							if (!extra)
 								extra = linkFor(build, false)
 
-							return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} />
+							return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} renderFailure={null} />
 						})
 
 						if (!extra)
@@ -749,6 +771,39 @@ let ContentArea = React.createClass({
 						prListings = filteredPrListings
 					}
 
+					function renderFailure(failure:Failure) {
+						let failureListing = failureListings[failure.key()]
+
+						if (!failureListing) // Kludge
+							failureListing = new FailureListing(failure)
+
+						let verdict:JSX.Element = null
+
+						if (failureListing.count > 0) {
+							if (failure.test) {
+								verdict = <span><b>Probably not</b>, other recent failures</span>
+							} else {
+								verdict = <span><b>Maybe</b>, recent failures in same suite may or may not be the same</span>
+							}
+						} else {
+							verdict = <span><span className="failedTestVerdict">Probably</span>, no other recent failures</span>
+						}
+
+						let extra = <div>
+							Recently failed on <b>{failureListing.count}/{trials} runs</b>;{" "}
+							<FailureFilterLink count={countKeys(failureListing.lanes)}
+							of={readyLanes.length} isLane={true} failure={failure} />
+							; <FailureFilterLink count={countKeys(failureListing.builds)}
+							of={countKeys(uniqueBuilds)} isLane={false} failure={failure} />
+							<br />
+							PR caused failure? {verdict}
+							<br />
+							<span className="datetime">Most recent failure: {failureListing.dateRange.late ? formatDate(failureListing.dateRange.late) : <span>never</span>}</span>
+						</div>
+
+						return renderFailureBasic(failure, extra)
+					}
+
 					let prDisplay = Object.keys(prListings).sort(dateRangeLaterCmpFor(prListings)).map(prKey => {
 						let prListing = prListings[prKey]
 						let buildListings = prListing.builds
@@ -769,7 +824,7 @@ let ContentArea = React.createClass({
 								if (!extra)
 									extra = <p><b>{linkFor(build, false, false)}</b></p>
 
-								return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} />
+								return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} renderFailure={renderFailure} />
 							})
 
 							if (!extra)
@@ -793,7 +848,7 @@ let ContentArea = React.createClass({
 					})
 
 					return <div>
-						<p>Comparing builds from {formatRange(dateRange)}</p>
+						<p>Are the failures in this PR new? Comparing builds from {formatRange(dateRange)}</p>
 						{prDisplay}
 					</div>
 				}
@@ -849,6 +904,7 @@ registerRender( () => {
 			{prChoice}
 			{inProgressChoice}
 			<TestFilterDisplay testFilter={currentTestFilter()} />
+			<PrFilterDisplay />
 			{laneCheckboxDisplay}
 		</div>
 		<LoadingBox />
