@@ -510,6 +510,24 @@ function linkJenkins(lane: Lane<Build>, build: Build) {
 	return <span>(<A href={url} title={title}>Failures</A>)</span>
 }
 
+function extractFailuresFromBuild(lane:Lane<Build>, build:Build, dateRange:DateRange, failureListings:FailureListingDict, uniqueBuilds:BooleanDict) {
+	dateRange.add(build.date)
+	uniqueBuilds[build.buildTag()] = true
+
+	for (let failure of build.failures) {
+		if (buildFailure(failure))
+			continue
+
+		let failureKey = failure.key()
+		let failureListing = getOrDefault(failureListings, failureKey,
+			() => new FailureListing(failure))
+		failureListing.dateRange.add(build.date)
+		failureListing.count++
+		failureListing.lanes[lane.idx] = true
+		failureListing.builds[build.buildTag()] = true
+	}
+}
+
 let ContentArea = React.createClass({
 	render: function() {
 		let readyLanes = filterLanes().filter(
@@ -644,7 +662,7 @@ let ContentArea = React.createClass({
 				// List of failures, then builds under failures, then lanes under builds.
 				case GroupBy.Failures: {
 					let failureListings: FailureListingDict = emptyObject()
-					let uniqueBuilds: { [id:string]: boolean } = emptyObject()
+					let uniqueBuilds: BooleanDict = emptyObject()
 					let trials = 0
 
 					for (let lane of readyLanes) {
@@ -655,21 +673,7 @@ let ContentArea = React.createClass({
 								continue
 
 							trials++
-							dateRange.add(build.date)
-							uniqueBuilds[build.buildTag()] = true
-
-							for (let failure of build.failures) {
-								if (buildFailure(failure))
-									continue
-
-								let failureKey = failure.key()
-								let failureListing = getOrDefault(failureListings, failureKey,
-									() => new FailureListing(failure))
-								failureListing.dateRange.add(build.date)
-								failureListing.count++
-								failureListing.lanes[lane.idx] = true
-								failureListing.builds[build.buildTag()] = true
-							}
+							extractFailuresFromBuild(lane, build, dateRange, failureListings, uniqueBuilds)
 						}
 					}
 					let failureDisplay = Object.keys(failureListings)
@@ -706,7 +710,7 @@ let ContentArea = React.createClass({
 				// List of PRs, which in practice is similar to a list of builds, but with access to extended failure info
 				case GroupBy.PRs: {
 					let failureListings: FailureListingDict = emptyObject()
-					let uniqueBuilds: { [id:string]: boolean } = emptyObject()
+					let uniqueBuilds: BooleanDict = emptyObject()
 					let prListings: PrListingDict = emptyObject()
 					let trials = 0
 
@@ -745,21 +749,7 @@ let ContentArea = React.createClass({
 									continue
 
 								trials++
-								dateRange.add(build.date)
-								uniqueBuilds[build.buildTag()] = true
-
-								for (let failure of build.failures) {
-									if (buildFailure(failure))
-										continue
-
-									let failureKey = failure.key()
-									let failureListing = getOrDefault(failureListings, failureKey,
-										() => new FailureListing(failure))
-									failureListing.dateRange.add(build.date)
-									failureListing.count++
-									failureListing.lanes[lane.idx] = true
-									failureListing.builds[build.buildTag()] = true
-								}
+								extractFailuresFromBuild(lane, build, dateRange, failureListings, uniqueBuilds)
 							}
 						}
 					}
