@@ -431,52 +431,72 @@ class BuildFailuresProps {
 	key: string
 	linkLabel: string
 	extraLabel: JSX.Element
-	beforeCollapse: number
-	renderFailure: (failure: Failure) => JSX.Element
 }
 
-class BuildFailuresState {
+class ExpandableState {
 	expand:boolean
 }
 
-class BuildFailures extends React.Component<BuildFailuresProps, BuildFailuresState> {
-	constructor(props: BuildFailuresProps) {
+class Expandable<Props, Item> extends React.Component<Props, ExpandableState> {
+	constructor(props: Props) {
 		super(props)
 		this.state = {expand: false}
 	}
+	listRender(items:Item[]) {
+		let itemDisplay: JSX.Element[]
+		let renderItem = x => this.itemRender(x)
+		let beforeCollapse = this.beforeFailureCount()
+
+		if (!this.state.expand && items.length > beforeCollapse) {
+			let showCount = beforeCollapse - 1 // Never show "1 more failures"
+			let itemSlice = items.slice(0, showCount)
+			itemDisplay = itemSlice.map(renderItem)
+			itemDisplay.push(
+				this.expandItemRender(items.length - showCount)
+			)
+		} else {
+			itemDisplay = items.map(renderItem)
+		}
+		return itemDisplay
+	}
+	expandButtonRender(label:string) {
+		return <Clickable key="expand" label={label}
+			handler={
+				e => {
+					this.setState({expand: true})
+					invalidateUi()
+				}
+			} />
+	}
+
+	// Overload these
+
+	beforeFailureCount() { return 1 }
+	itemRender(item:Item) : JSX.Element { return null }
+	expandItemRender(failureCount:number) : JSX.Element { return null }
+}
+
+class ExpandableWithFailures<Props, Item> extends Expandable<Props, Item> {
+	expandItemRender(failureCount: number) {
+		let label = "[" + failureCount + " more failures]"
+		return <li key="expand" className="failureExpand">
+			<Icon src="images/error.png" /> {this.expandButtonRender(label)}
+		</li>
+	}
+}
+
+class BuildFailures extends ExpandableWithFailures<BuildFailuresProps, Failure> {
 	render() {
 		let build = this.props.build
 		let key = this.props.key
 		let buildLink = <span><A href={build.displayUrl} title={null}>{this.props.linkLabel}</A> {this.props.extraLabel}</span>
-		let renderFailure = this.props.renderFailure ? this.props.renderFailure : renderFailureStandard
 
 		if (!build.metadataStatus.failed) {
-			let failures: JSX.Element[]
 			let failureDisplay : JSX.Element = null
+			let failures: JSX.Element[] = null
 
-			if (!this.state.expand && build.failures.length > this.props.beforeCollapse) {
-				let showCount = this.props.beforeCollapse - 1 // Never show "1 more failures"
-				let failureSlice = build.failures.slice(0, showCount)
-				let label = "[" + (build.failures.length - showCount)
-					+ " more failures]"
-				failures = failureSlice.map(renderFailure)
-				failures.push(
-					<li key="expand" className="failureExpand">
-						<Icon src="images/error.png" /> {" "}
-						<Clickable key="expand" label={label}
-							handler={
-								e => {
-									this.setState({expand: true})
-									invalidateUi()
-								}
-							} />
-					</li>)
-			} else {
-				failures = build.failures.map(renderFailure)
-			}
-
-			if (failures.length)
-				failureDisplay = <ul>{failures}</ul>
+			if (build.failures.length)
+				failureDisplay = <ul>{ this.listRender(build.failures) }</ul>
 			else if (build.babysitterStatus.failed)
 				failureDisplay = <i className="noLoad">(Test data did not load)</i>
 
@@ -496,6 +516,9 @@ class BuildFailures extends React.Component<BuildFailuresProps, BuildFailuresSta
 			</li>
 		}
 	}
+
+	beforeFailureCount() { return before_collapse_standard }
+	itemRender(failure:Failure) : JSX.Element { return renderFailureStandard(failure) }
 }
 
 function linkFor(build: Build, parens=true, allowPrTitle=true) {
@@ -570,7 +593,7 @@ let ContentArea = React.createClass({
 							dateRange.add(build.date) // Side effects in a map? Ew
 
 							let linkLabel = "Build " + build.id
-							return <BuildFailures lane={lane} build={build} key={build.id} linkLabel={linkLabel} extraLabel={linkFor(build)} beforeCollapse={before_collapse_standard} renderFailure={null}/>
+							return <BuildFailures lane={lane} build={build} key={build.id} linkLabel={linkLabel} extraLabel={linkFor(build)} />
 						})
 
 						return <div className="verboseLane" key={lane.tag}>
@@ -628,7 +651,7 @@ let ContentArea = React.createClass({
 							if (!extra)
 								extra = linkFor(build, false)
 
-							return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} beforeCollapse={before_collapse_standard} renderFailure={null} />
+							return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} />
 						})
 
 						if (!extra)
@@ -828,7 +851,7 @@ let ContentArea = React.createClass({
 								if (!extra)
 									extra = <p><b>{linkFor(build, false, false)}</b></p>
 
-								return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} beforeCollapse={before_collapse_pr} renderFailure={renderFailure} />
+								return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} />
 							})
 
 							if (!extra)

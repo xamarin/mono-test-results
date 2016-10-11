@@ -300,8 +300,8 @@ class TitleBar extends React.Component<{}, {}> {
 				pageTitle = title
 			} else {
 				if (otherPages.length)
-					otherPages.push(<span> | </span>)
-				otherPages.push(<a href={url}>{title}</a>)
+					otherPages.push(<span key={url+"bar"}> | </span>)
+				otherPages.push(<a href={url} key={url}>{title}</a>)
 			}
 		}
 		return <div>
