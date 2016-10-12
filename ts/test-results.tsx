@@ -286,7 +286,7 @@ class PrFailure {
 interface PrFailureDict { [key:string]:PrFailure }
 
 function anyBuildFrom(buildDict: BuildDict) {
-	for (let key in Object.keys(buildDict))
+	for (let key of Object.keys(buildDict))
 		return buildDict[key]
 	return null
 }
@@ -613,17 +613,15 @@ class PrDisplayProps {
 }
 
 class PrDisplay extends Expandable<PrDisplayProps, string> {
-	prExtra:JSX.Element
-
 	render() {
 		let prBuildListings = this.props.prListing.builds
 		let prBuildSortedKeys = this.props.prListing.sortedKeys()
-		let prDisplay = this.listRender(prBuildSortedKeys)
 		let sampleBuild = this.props.prListing.sampleBuild()
+		let prDisplay = this.listRender(prBuildSortedKeys)
 
 		let prExtra: JSX.Element = null
 		if (sampleBuild) {
-			this.prExtra = <p>
+			prExtra = <p>
 				<b>{linkFor(sampleBuild, false)}</b>, {sampleBuild.prAuthor}: <b>{sampleBuild.prTitle}</b>
 			</p>
 		} else {
@@ -665,7 +663,7 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 	}
 
 	expandItemRender(failureCount:number) : JSX.Element {
-		let label = "" + failureCount + " more failures"
+		let label = "[" + failureCount + " more commit for PR " + this.props.prKey + "]"
 		return <p key="expand" className="prExpand">
 			{this.expandButtonRender(label)}
 		</p>
@@ -901,9 +899,9 @@ let ContentArea = React.createClass({
 									() => new PrBuildListing())
 
 								if (build.inProgress())
-									prBuildListing.lanes[lane.idx] = build
-								else
 									prBuildListing.lanesInProgress[lane.idx] = build
+								else
+									prBuildListing.lanes[lane.idx] = build
 
 								// Note: Suspicion is not rated on this pass
 								for (let failure of build.failures) {
