@@ -252,10 +252,12 @@ function currentlyLoading() {
 
 // Listing containers
 
+interface BuildDict { [laneIndex:number]: Build }
+
 class BuildListing extends Listing {
 	failedLanes: number
 	inProgressLanes: number
-	lanes: { [laneIndex:number]: Build }
+	lanes: BuildDict
 
 	constructor() {
 		super()
@@ -266,14 +268,48 @@ class BuildListing extends Listing {
 }
 interface BuildListingDict { [key:string] : BuildListing }
 
+enum PrSuspicion {
+	Probably,
+	Maybe,
+	ProbablyNot
+}
+
+class PrFailure {
+	lanes: BuildDict
+	suspicion: PrSuspicion
+
+	constructor() {
+		this.lanes = emptyObject()
+	}
+}
+
+interface PrFailureDict { [key:string]:PrFailure }
+
+class PrBuildListing extends Listing {
+	lanes: BuildDict
+	lanesInProgress: BuildDict
+	failureDict: PrFailureDict
+	suspicion: PrSuspicion
+
+	constructor() {
+		super()
+		this.lanes = emptyObject()
+		this.lanesInProgress = emptyObject()
+		this.failureDict = emptyObject()
+	}
+}
+
+interface PrBuildListingDict { [key:string] : PrBuildListing }
+
 class PrListing extends Listing {
-	builds: BuildListingDict
+	builds: PrBuildListingDict
 
 	constructor() {
 		super()
 		this.builds = emptyObject()
 	}
 }
+
 interface PrListingDict { [key:string] : PrListing }
 
 function filterBuildListingsForInProgress(buildListings: BuildListingDict) {
@@ -447,8 +483,9 @@ class Expandable<Props, Item> extends React.Component<Props, ExpandableState> {
 		let renderItem = x => this.itemRender(x)
 		let beforeCollapse = this.beforeFailureCount()
 
+		// TODO: Never show "1 more failures" for failure listings
 		if (!this.state.expand && items.length > beforeCollapse) {
-			let showCount = beforeCollapse - 1 // Never show "1 more failures"
+			let showCount = beforeCollapse
 			let itemSlice = items.slice(0, showCount)
 			itemDisplay = itemSlice.map(renderItem)
 			itemDisplay.push(
@@ -533,6 +570,73 @@ function linkJenkins(lane: Lane<Build>, build: Build) {
 	return <span>(<A href={url} title={title}>Failures</A>)</span>
 }
 
+class PrDisplayProps {
+	prKey: string
+	prListing: PrListing
+}
+
+class PrDisplay extends Expandable<PrDisplayProps, string> {
+	prExtra:JSX.Element
+
+	render() {
+		let prBuildListings = this.props.prListing.builds
+		let prBuildSortedKeys = Object.keys(prBuildListings).sort(dateRangeLaterCmpFor(prBuildListings))
+		let prDisplay = this.listRender(prBuildSortedKeys)
+
+		// KLUDGE: this.prExtra is used to allow itemRender to have a side effect, which is gross
+		let prExtra = this.prExtra
+		this.prExtra = null
+		if (!prExtra)
+			prExtra = <span>[PR could not be displayed]</span>
+
+		// FIXME: Don't blockquote, use a div with a left margin
+		return <div key={this.props.prKey}>
+			{prExtra}
+			<blockquote>
+				{prDisplay}
+			</blockquote>
+		</div>
+	}
+
+	itemRender(prBuildKey: string) {
+		let prBuildListing = this.props.prListing.builds[prBuildKey]
+		let extra: JSX.Element = null
+		console.log("QQ", prBuildListing, objectSize(prBuildListing.lanes))
+		let laneDisplay = Object.keys(prBuildListing.lanes).sort(numericSort).map(laneIdx => {
+			let build = prBuildListing.lanes[laneIdx]
+			let lane = lanes[laneIdx]
+
+			if (!this.prExtra)
+				this.prExtra = <p>
+					<b>{linkFor(build, false)}</b>, {build.prAuthor}: <b>{build.prTitle}</b>
+				</p>
+
+			if (!extra)
+				extra = <p><b>{linkFor(build, false, false)}</b></p>
+
+			return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} />
+		})
+
+		if (!extra)
+			extra = <span>Unknown</span>
+
+		return <div className="verbosePr" key={prBuildKey}>
+			{extra}
+			<ul>
+				{laneDisplay}
+			</ul>
+		</div>
+	}
+
+	expandItemRender(failureCount:number) : JSX.Element {
+		let label = "" + failureCount + " more failures"
+		return <p key="expand" className="prExpand">
+			{this.expandButtonRender(label)}
+		</p>
+	}
+}
+
+// Used when constructing a failureListingsDict
 function extractFailuresFromBuild(lane:Lane<Build>, build:Build, dateRange:DateRange, failureListings:FailureListingDict, uniqueBuilds:BooleanDict) {
 	dateRange.add(build.date)
 	uniqueBuilds[build.buildTag()] = true
@@ -756,17 +860,24 @@ let ContentArea = React.createClass({
 							if (lane.isPr) {
 								let prListing = getOrDefault(prListings, build.pr,
 									() => new PrListing())
-								let buildListing = getOrDefault(prListing.builds, build.buildTag(),
-									() => new BuildListing())
 
-								if (build.failures.length)
-									buildListing.failedLanes++
+								let prBuildListing = getOrDefault(prListing.builds, build.buildTag(),
+									() => new PrBuildListing())
+
 								if (build.inProgress())
-									buildListing.inProgressLanes++
+									prBuildListing.lanes[lane.idx] = build
+								else
+									prBuildListing.lanesInProgress[lane.idx] = build
 
-//								dateRange.add(build.date)
-								buildListing.dateRange.add(build.date)
-								buildListing.lanes[lane.idx] = build
+								// Note: Suspicion is not rated on this pass
+								for (let failure of build.failures) {
+									let prFailureListing = getOrDefault(prBuildListing.failureDict,
+										failure.key(), () => new PrFailure())
+									prFailureListing.lanes[lane.idx] = build
+								}
+
+								prListing.dateRange.add(build.date)
+								prBuildListing.dateRange.add(build.date)
 							} else {
 								if (build.inProgress())
 									continue
@@ -775,19 +886,6 @@ let ContentArea = React.createClass({
 								extractFailuresFromBuild(lane, build, dateRange, failureListings, uniqueBuilds)
 							}
 						}
-					}
-
-					if (!prFilter.value && inProgressVisible.value == Visibility.Hide) {
-						let filteredPrListings: PrListingDict = emptyObject()
-						for (let key of Object.keys(prListings)) {
-							let value = prListings[key]
-							let buildListings = filterBuildListingsForInProgress(value.builds)
-							if (objectSize(buildListings) > 0) {
-								value.builds = buildListings // KLUDGE: This mutates the old value
-								filteredPrListings[key] = value
-							}
-						}
-						prListings = filteredPrListings
 					}
 
 					function renderFailure(failure:Failure) {
@@ -833,45 +931,7 @@ let ContentArea = React.createClass({
 
 					let prDisplay = Object.keys(prListings).sort(dateRangeLaterCmpFor(prListings)).map(prKey => {
 						let prListing = prListings[prKey]
-						let buildListings = prListing.builds
-						let prExtra : JSX.Element = null
-
-						let buildDisplay = Object.keys(buildListings).sort(dateRangeLaterCmpFor(buildListings)).map(buildKey => {
-							let extra: JSX.Element = null
-							let buildListing = buildListings[buildKey]
-							let laneDisplay = Object.keys(buildListing.lanes).sort(numericSort).map(laneIdx => {
-								let build = buildListing.lanes[laneIdx]
-								let lane = lanes[laneIdx]
-
-								if (!prExtra)
-									prExtra = <p>
-										<b>{linkFor(build, false)}</b>, {build.prAuthor}: <b>{build.prTitle}</b>
-									</p>
-
-								if (!extra)
-									extra = <p><b>{linkFor(build, false, false)}</b></p>
-
-								return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} />
-							})
-
-							if (!extra)
-								extra = <span>Unknown</span>
-
-							return <div className="verbosePr" key={buildKey}>
-								{extra}
-								<ul>
-									{laneDisplay}
-								</ul>
-							</div>
-						})
-
-						// FIXME: Don't blockquote, use a div with a left margin
-						return <div key={prKey}>
-							{prExtra}
-							<blockquote>
-								{buildDisplay}
-							</blockquote>
-						</div>
+						return <PrDisplay prKey={prKey} prListing={prListing} />
 					})
 
 					return <div>
@@ -887,7 +947,7 @@ let ContentArea = React.createClass({
 })
 
 registerRender( () => {
-	let inProgressChoice = groupBy.value != GroupBy.Failures
+	let inProgressChoice = groupBy.value != GroupBy.Failures && groupBy.value != GroupBy.PRs
 		? <span>
 			{" "}|{" "}
 			In progress <ChoiceVisibility enum={Visibility} data={inProgressVisible} value={inProgressVisible.value} />
