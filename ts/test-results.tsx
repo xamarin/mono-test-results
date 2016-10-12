@@ -285,6 +285,12 @@ class PrFailure {
 
 interface PrFailureDict { [key:string]:PrFailure }
 
+function anyBuildFrom(buildDict: BuildDict) {
+	for (let key in Object.keys(buildDict))
+		return buildDict[key]
+	return null
+}
+
 class PrBuildListing extends Listing {
 	lanes: BuildDict
 	lanesInProgress: BuildDict
@@ -297,6 +303,17 @@ class PrBuildListing extends Listing {
 		this.lanesInProgress = emptyObject()
 		this.failureDict = emptyObject()
 	}
+
+	sampleBuildCache: Build
+	sampleBuild() {
+		if (!this.sampleBuildCache) {
+			this.sampleBuildCache = anyBuildFrom(this.lanes)
+			if (!this.sampleBuildCache)
+				this.sampleBuildCache = anyBuildFrom(this.lanesInProgress)
+		}
+		return this.sampleBuildCache
+	}
+
 }
 
 interface PrBuildListingDict { [key:string] : PrBuildListing }
@@ -307,6 +324,26 @@ class PrListing extends Listing {
 	constructor() {
 		super()
 		this.builds = emptyObject()
+	}
+
+	// Late population
+	sortedKeysCache: string[]
+	sortedKeys() {
+		if (!this.sortedKeysCache)
+			this.sortedKeysCache = Object.keys(this.builds).sort(dateRangeLaterCmpFor(this.builds))
+		return this.sortedKeysCache
+	}
+
+	sampleBuildCache: Build
+	sampleBuild() {
+		if (!this.sampleBuildCache) {
+			for (let key of this.sortedKeys()) {
+				this.sampleBuildCache = this.builds[key].sampleBuild()
+				if (this.sampleBuildCache)
+					break
+			}
+		}
+		return this.sampleBuildCache
 	}
 }
 
@@ -580,14 +617,18 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 
 	render() {
 		let prBuildListings = this.props.prListing.builds
-		let prBuildSortedKeys = Object.keys(prBuildListings).sort(dateRangeLaterCmpFor(prBuildListings))
+		let prBuildSortedKeys = this.props.prListing.sortedKeys()
 		let prDisplay = this.listRender(prBuildSortedKeys)
+		let sampleBuild = this.props.prListing.sampleBuild()
 
-		// KLUDGE: this.prExtra is used to allow itemRender to have a side effect, which is gross
-		let prExtra = this.prExtra
-		this.prExtra = null
-		if (!prExtra)
-			prExtra = <span>[PR could not be displayed]</span>
+		let prExtra: JSX.Element = null
+		if (sampleBuild) {
+			this.prExtra = <p>
+				<b>{linkFor(sampleBuild, false)}</b>, {sampleBuild.prAuthor}: <b>{sampleBuild.prTitle}</b>
+			</p>
+		} else {
+			prExtra = <span>PR {this.props.prKey} [could not display]</span>
+		}
 
 		// FIXME: Don't blockquote, use a div with a left margin
 		return <div key={this.props.prKey}>
@@ -601,15 +642,10 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 	itemRender(prBuildKey: string) {
 		let prBuildListing = this.props.prListing.builds[prBuildKey]
 		let extra: JSX.Element = null
-		console.log("QQ", prBuildListing, objectSize(prBuildListing.lanes))
+
 		let laneDisplay = Object.keys(prBuildListing.lanes).sort(numericSort).map(laneIdx => {
 			let build = prBuildListing.lanes[laneIdx]
 			let lane = lanes[laneIdx]
-
-			if (!this.prExtra)
-				this.prExtra = <p>
-					<b>{linkFor(build, false)}</b>, {build.prAuthor}: <b>{build.prTitle}</b>
-				</p>
 
 			if (!extra)
 				extra = <p><b>{linkFor(build, false, false)}</b></p>
