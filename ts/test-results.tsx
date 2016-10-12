@@ -639,14 +639,18 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 
 	itemRender(prBuildKey: string) {
 		let prBuildListing = this.props.prListing.builds[prBuildKey]
+		let sampleBuild = prBuildListing.sampleBuild()
+
 		let extra: JSX.Element = null
+		if (sampleBuild) {
+			extra = <p><b>{linkFor(sampleBuild, false, false)}</b></p>
+		} else {
+			extra = <span>Commit {prBuildKey} [could not display]</span>
+		}
 
 		let laneDisplay = Object.keys(prBuildListing.lanes).sort(numericSort).map(laneIdx => {
 			let build = prBuildListing.lanes[laneIdx]
 			let lane = lanes[laneIdx]
-
-			if (!extra)
-				extra = <p><b>{linkFor(build, false, false)}</b></p>
 
 			return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} />
 		})
@@ -663,7 +667,8 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 	}
 
 	expandItemRender(failureCount:number) : JSX.Element {
-		let label = "[" + failureCount + " more commit for PR " + this.props.prKey + "]"
+		let label = "[" + failureCount + " more commit" +
+			(failureCount>1?"s":"") + " for PR " + this.props.prKey + "]"
 		return <p key="expand" className="prExpand">
 			{this.expandButtonRender(label)}
 		</p>
