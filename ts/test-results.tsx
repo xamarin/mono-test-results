@@ -683,18 +683,18 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 		let sampleBuild = this.props.prListing.sampleBuild()
 		let prDisplay = this.listRender(prBuildSortedKeys)
 
-		let prExtra: JSX.Element = null
+		let prTitle: JSX.Element = null
 		if (sampleBuild) {
-			prExtra = <p>
+			prTitle = <p>
 				<b>{linkFor(sampleBuild, false)}</b>, {sampleBuild.prAuthor}: <b>{sampleBuild.prTitle}</b>
 			</p>
 		} else {
-			prExtra = <span>PR {this.props.prKey} [could not display]</span>
+			prTitle = <span>PR {this.props.prKey} [could not display]</span>
 		}
 
 		// FIXME: Don't blockquote, use a div with a left margin
 		return <div key={this.props.prKey}>
-			{prExtra}
+			{prTitle}
 			<blockquote>
 				{prDisplay}
 			</blockquote>
@@ -706,17 +706,48 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 		let prBuildListing = this.props.prListing.builds[prBuildKey]
 		let sampleBuild = prBuildListing.sampleBuild()
 
-		let extra: JSX.Element = null
+		let commitTitle: JSX.Element = null
 		if (sampleBuild) {
-			extra = <p><b>{linkFor(sampleBuild, false, false)}</b></p>
+			commitTitle = <div><b>{linkFor(sampleBuild, false, false)}</b></div>
 		} else {
-			extra = <span>Commit {prBuildKey} [could not display]</span>
+			commitTitle = <span>Commit {prBuildKey} [could not display]</span>
+		}
+
+		let result:JSX.Element = null
+		if (objectSize(prBuildListing.failureDict) > 0) {
+			let suspicionMessage: JSX.Element = null
+			switch (prBuildListing.suspicion()) {
+				case PrSuspicion.Build:
+					suspicionMessage = <span className="failedTestVerdict">Probably broken, at least one build failed</span>
+					break;
+				case PrSuspicion.Probably:
+					suspicionMessage = <span className="failedTestVerdict">Probably broken, there are new failures</span>
+					break;
+				case PrSuspicion.Maybe:
+					suspicionMessage = <span><b>Maybe broken</b>, a suite failed which has failed before-- but it's not known if it's for the same reason</span>
+					break;
+				case PrSuspicion.ProbablyNot:
+					suspicionMessage = <span><b>Probably okay</b>, all failures have been seen before</span>
+					break;
+				case PrSuspicion.NoErrors:
+					suspicionMessage = <span>[???]</span>
+					break;
+			}
+
+			result = <div>
+				<div>PR is: {suspicionMessage}</div>
+				<p>Failures:</p>
+				<PrBuildDisplay prBuildKey={prBuildKey} prBuildListing={prBuildListing} />
+			</div>
+		} else {
+			result = <div>
+				No errors!
+			</div>
 		}
 
 		return <div className="verbosePr" key={prBuildKey}>
-			{extra}
-			{PrSuspicion[prBuildListing.suspicion()]}
-			<PrBuildDisplay prBuildKey={prBuildKey} prBuildListing={prBuildListing} />
+			{commitTitle}
+			{result}
 		</div>
 	}
 
