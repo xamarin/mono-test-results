@@ -269,17 +269,35 @@ class BuildListing extends Listing {
 interface BuildListingDict { [key:string] : BuildListing }
 
 enum PrSuspicion {
+	Build,
 	Probably,
 	Maybe,
-	ProbablyNot
+	ProbablyNot,
+	NoErrors
 }
 
 class PrFailure {
 	lanes: BuildDict
-	suspicion: PrSuspicion
 
-	constructor() {
+	constructor(public failureListing:FailureListing) {
 		this.lanes = emptyObject()
+	}
+
+	suspicionCache: PrSuspicion
+	suspicion() {
+		if (this.suspicionCache == null) {
+			let failure = this.failureListing.failure
+			if (buildFailure(failure)) {
+				this.suspicionCache = PrSuspicion.Build
+			} else if (this.failureListing.count == 0) {
+				this.suspicionCache = PrSuspicion.Probably
+			} else if (!failure.test) {
+				this.suspicionCache = PrSuspicion.Maybe
+			} else {
+				this.suspicionCache = PrSuspicion.ProbablyNot
+			}
+		}
+		return this.suspicionCache
 	}
 }
 
@@ -295,13 +313,23 @@ class PrBuildListing extends Listing {
 	lanes: BuildDict
 	lanesInProgress: BuildDict
 	failureDict: PrFailureDict
-	suspicion: PrSuspicion
 
 	constructor() {
 		super()
 		this.lanes = emptyObject()
 		this.lanesInProgress = emptyObject()
 		this.failureDict = emptyObject()
+	}
+
+	// Late population
+	sortedKeysCache: string[]
+	sortedKeys() {
+		if (!this.sortedKeysCache)
+			this.sortedKeysCache = Object.keys(this.failureDict).sort(
+				(a, b) =>
+					this.failureDict[a].suspicion() - this.failureDict[b].suspicion()
+			)
+		return this.sortedKeysCache
 	}
 
 	sampleBuildCache: Build
@@ -314,6 +342,16 @@ class PrBuildListing extends Listing {
 		return this.sampleBuildCache
 	}
 
+	suspicionCache: PrSuspicion
+	suspicion() {
+		if (this.suspicionCache == null) {
+			this.suspicionCache = PrSuspicion.NoErrors
+			for (let prFailure of objectValues(this.failureDict)) {
+				this.suspicionCache = Math.min(this.suspicionCache, prFailure.suspicion())
+			}
+		}
+		return this.suspicionCache
+	}
 }
 
 interface PrBuildListingDict { [key:string] : PrBuildListing }
@@ -363,11 +401,9 @@ class FailureListing extends Listing {
 	count: number
 	builds: { [id:string]: boolean }
 	lanes: { [laneIndex:number]: boolean }
-	obj: Failure
 
-	constructor(obj: Failure) {
+	constructor(public failure: Failure) {
 		super()
-		this.obj = obj
 		this.count = 0
 		this.builds = emptyObject()
 		this.lanes = emptyObject()
@@ -592,7 +628,11 @@ class BuildFailures extends ExpandableWithFailures<BuildFailuresProps, Failure> 
 	}
 
 	beforeFailureCount() { return before_collapse_standard }
-	itemRender(failure:Failure) : JSX.Element { return renderFailureStandard(failure) }
+
+	// Display one failure
+	itemRender(failure:Failure) : JSX.Element {
+		return renderFailureStandard(failure)
+	}
 }
 
 function linkFor(build: Build, parens=true, allowPrTitle=true) {
@@ -605,6 +645,30 @@ function linkJenkins(lane: Lane<Build>, build: Build) {
 	let title = "Test results on Jenkins"
 	let url = jenkinsBuildBaseUrl(lane.tag, build.id) + "/testReport"
 	return <span>(<A href={url} title={title}>Failures</A>)</span>
+}
+
+class PrBuildDisplayProps {
+	prBuildKey: string
+	prBuildListing: PrBuildListing
+}
+
+class PrBuildDisplay extends ExpandableWithFailures<PrBuildDisplayProps, string> {
+	render() {
+		let prFailuresSortedKeys = this.props.prBuildListing.sortedKeys()
+		let prFailureDisplay = this.listRender(prFailuresSortedKeys)
+		return <ul>
+			{prFailureDisplay}
+		</ul>
+	}
+
+	// Display one failure
+	itemRender(prFailureKey: string) {
+		let prFailure = this.props.prBuildListing.failureDict[prFailureKey]
+		let suspicion = prFailure.suspicion()
+		return <li>{prFailureKey}: {PrSuspicion[suspicion]}</li>
+	}
+
+	beforeFailureCount() { return before_collapse_pr }
 }
 
 class PrDisplayProps {
@@ -637,6 +701,7 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 		</div>
 	}
 
+	// Display one commit's PR data
 	itemRender(prBuildKey: string) {
 		let prBuildListing = this.props.prListing.builds[prBuildKey]
 		let sampleBuild = prBuildListing.sampleBuild()
@@ -648,21 +713,10 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 			extra = <span>Commit {prBuildKey} [could not display]</span>
 		}
 
-		let laneDisplay = Object.keys(prBuildListing.lanes).sort(numericSort).map(laneIdx => {
-			let build = prBuildListing.lanes[laneIdx]
-			let lane = lanes[laneIdx]
-
-			return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} />
-		})
-
-		if (!extra)
-			extra = <span>Unknown</span>
-
 		return <div className="verbosePr" key={prBuildKey}>
 			{extra}
-			<ul>
-				{laneDisplay}
-			</ul>
+			{PrSuspicion[prBuildListing.suspicion()]}
+			<PrBuildDisplay prBuildKey={prBuildKey} prBuildListing={prBuildListing} />
 		</div>
 	}
 
@@ -846,7 +900,7 @@ let ContentArea = React.createClass({
 						.sort( (a:string,b:string) => failureListings[b].count - failureListings[a].count )
 						.map( key => {
 							let failureListing = failureListings[key]
-							let failure = failureListing.obj
+							let failure = failureListing.failure
 							let title = failure.test
 								? <div>
 										<div className="failedTestName">{failure.test}</div>
@@ -878,6 +932,7 @@ let ContentArea = React.createClass({
 					let failureListings: FailureListingDict = emptyObject()
 					let uniqueBuilds: BooleanDict = emptyObject()
 					let prListings: PrListingDict = emptyObject()
+					let prFailureListings: PrFailureDict
 					let trials = 0
 
 					// FIXME: Some code duplication here. Can this be merged?
@@ -910,8 +965,14 @@ let ContentArea = React.createClass({
 
 								// Note: Suspicion is not rated on this pass
 								for (let failure of build.failures) {
+									let failureKey = failure.key()
 									let prFailureListing = getOrDefault(prBuildListing.failureDict,
-										failure.key(), () => new PrFailure())
+										failureKey, () => {
+											// If a new failure listing is created in this path, its count, etc will be 0
+											let failureListing = getOrDefault(failureListings, failureKey,
+												() => new FailureListing(failure))
+											return new PrFailure(failureListing)
+									})
 									prFailureListing.lanes[lane.idx] = build
 								}
 
