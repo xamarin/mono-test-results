@@ -105,6 +105,8 @@ li.failureExpand a {
 
 .highlightedLanesList { font-weight:bold; }
 
+.fakeTestFailuresList { margin-top:1.12em; }
+
 .choice {
 	font-weight:bold;
 }

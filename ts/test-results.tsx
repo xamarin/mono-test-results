@@ -844,9 +844,9 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 				<PrBuildDisplay prBuildKey={prBuildKey} prBuildListing={prBuildListing} prDisplayContext={this.props.prDisplayContext} />
 			</div>
 		} else {
-			result = <p className="prTestFailures">
-				<ul><li className="ok"><b>No test failures!</b></li></ul>
-			</p>
+			result = <div className="prTestFailures">
+				<ul className="fakeTestFailuresList"><li className="ok"><b>No test failures!</b></li></ul>
+			</div>
 		}
 
 		// TODO: Status
@@ -1140,7 +1140,7 @@ let ContentArea = React.createClass({
 
 					let prDisplay = Object.keys(prListings).sort(dateRangeLaterCmpFor(prListings)).map(prKey => {
 						let prListing = prListings[prKey]
-						return <PrDisplay prKey={prKey} prListing={prListing} prDisplayContext={prDisplayContext} />
+						return <PrDisplay key={prKey} prKey={prKey} prListing={prListing} prDisplayContext={prDisplayContext} />
 					})
 
 					return <div>
