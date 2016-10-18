@@ -107,6 +107,8 @@ li.failureExpand a {
 
 .fakeTestFailuresList { margin-top:1.12em; }
 
+.inlineForm { display:inline-block; }
+
 .choice {
 	font-weight:bold;
 }

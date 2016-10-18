@@ -497,14 +497,18 @@ class PrFilterDisplay extends React.Component<{}, PrFilterDisplayState> {
 		} else {
 			return <span>
 				{" "} | Filter by GitHub handle:{" "}
-				<input value={this.state.nameInput} onChange={ (evt) => {
-					this.setState({nameInput: (evt.target as any).value})
-				}} /> {" "}
-				<button type="button" onClick={ () => {
+				<form onSubmit={ (evt) => {
 					let nameInput = this.state.nameInput
 					this.setState({nameInput: null})
 					prGithubFilter.set(nameInput)
-				}}>Search</button>
+
+					evt.preventDefault() // Don't submit!
+				}} className="inlineForm">
+					<input value={this.state.nameInput} onChange={ (evt) => {
+						this.setState({nameInput: (evt.target as any).value})
+					}} /> {" "}
+					<input type="submit" value="Search" />
+				</form>
 			</span>
 		}
 	}
