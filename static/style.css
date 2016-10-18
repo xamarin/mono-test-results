@@ -103,6 +103,8 @@ li.failureExpand a {
 	color:#FC94AF;
 }
 
+.highlightedLanesList { font-weight:bold; }
+
 .choice {
 	font-weight:bold;
 }

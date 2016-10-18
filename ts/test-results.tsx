@@ -312,12 +312,14 @@ function anyBuildFrom(buildDict: BuildDict) {
 class PrBuildListing extends Listing {
 	lanes: BuildDict
 	lanesInProgress: BuildDict
+	lanesAborted: BuildDict
 	failureDict: PrFailureDict
 
 	constructor() {
 		super()
 		this.lanes = emptyObject()
 		this.lanesInProgress = emptyObject()
+		this.lanesAborted = emptyObject()
 		this.failureDict = emptyObject()
 	}
 
@@ -338,6 +340,8 @@ class PrBuildListing extends Listing {
 			this.sampleBuildCache = anyBuildFrom(this.lanes)
 			if (!this.sampleBuildCache)
 				this.sampleBuildCache = anyBuildFrom(this.lanesInProgress)
+			if (!this.sampleBuildCache)
+				this.sampleBuildCache = anyBuildFrom(this.lanesAborted)
 		}
 		return this.sampleBuildCache
 	}
@@ -647,7 +651,7 @@ function linkJenkins(lane: Lane<Build>, build: Build) {
 	return <span>(<A href={url} title={title}>Failures</A>)</span>
 }
 
-function linkLanesDiv(title:string, dict:BuildDict, linkFailures = false) {
+function linkLanesDiv(title:string, dict:BuildDict, linkFailures = false, bold = false) {
 	if (!dict || objectSize(dict) == 0)
 		return null
 
@@ -663,7 +667,8 @@ function linkLanesDiv(title:string, dict:BuildDict, linkFailures = false) {
 			 url += "/testReport"
 		links.push(<A href={url} title={title} key={idx}>{lane.name}</A>)
 	}
-	return <div>{title}: {links}</div>
+	let className = bold ? "highlightedLanesList" : "lanesList"
+	return <div><span className={className}>{title}:</span> {links}</div>
 }
 
 // "State of the world" data shared by all failure displays
@@ -820,6 +825,7 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 			{commitTitle}
 			{linkLanesDiv("Built on", prBuildListing.lanes)}
 			{linkLanesDiv("Build in progress", prBuildListing.lanesInProgress)}
+			{linkLanesDiv("Aborted early on", prBuildListing.lanesAborted, false, true)}
 			{result}
 		</li>
 	}
@@ -1064,6 +1070,8 @@ let ContentArea = React.createClass({
 
 								if (build.inProgress())
 									prBuildListing.lanesInProgress[lane.idx] = build
+								else if (build.result == "ABORTED")
+									prBuildListing.lanesAborted[lane.idx] = build
 								else
 									prBuildListing.lanes[lane.idx] = build
 
