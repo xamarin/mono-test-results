@@ -2,7 +2,7 @@
 /// <reference path="./helper-react.tsx" />
 
 const before_collapse_standard = 5
-const before_collapse_pr = 100
+const before_collapse_pr = 8
 
 // Constants
 
@@ -647,6 +647,25 @@ function linkJenkins(lane: Lane<Build>, build: Build) {
 	return <span>(<A href={url} title={title}>Failures</A>)</span>
 }
 
+function linkLanesDiv(title:string, dict:BuildDict, linkFailures = false) {
+	if (!dict || objectSize(dict) == 0)
+		return null
+
+	let links:JSX.Element[] = []
+	for (let idx in dict) {
+		let lane = lanes[idx]
+		let build = dict[idx]
+		if (links.length > 0)
+			links.push(<span key={""+idx+"bar"}>, </span>)
+		let url = jenkinsBuildBaseUrl(lane.tag, build.id)
+		let title = (linkFailures ? "Failure" : "Build") + " results on Jenkins"
+		if (linkFailures)
+			 url += "/testReport"
+		links.push(<A href={url} title={title} key={idx}>{lane.name}</A>)
+	}
+	return <div>{title}: {links}</div>
+}
+
 class PrBuildDisplayProps {
 	prBuildKey: string
 	prBuildListing: PrBuildListing
@@ -664,8 +683,31 @@ class PrBuildDisplay extends ExpandableWithFailures<PrBuildDisplayProps, string>
 	// Display one failure
 	itemRender(prFailureKey: string) {
 		let prFailure = this.props.prBuildListing.failureDict[prFailureKey]
-		let suspicion = prFailure.suspicion()
-		return <li>{prFailureKey}: {PrSuspicion[suspicion]}</li>
+		let suspicionMessage: JSX.Element = null
+
+		switch (prFailure.suspicion()) {
+			case PrSuspicion.Build:
+				suspicionMessage = <span className="failedTestVerdict">Probably, this is a build failure</span>
+				break;
+			case PrSuspicion.Probably:
+				suspicionMessage = <span><span className="failedTestVerdict">Probably</span>, no other failures seen recently</span>
+				break;
+			case PrSuspicion.Maybe:
+				suspicionMessage = <span><b>Maybe</b>, recent failures in same suite may or may not be the same</span>
+				break;
+			case PrSuspicion.ProbablyNot:
+				suspicionMessage = <span><b>Probably not</b>, has been seen failing recently</span>
+				break;
+			case PrSuspicion.NoErrors:
+				suspicionMessage = <span>[???]</span>
+				break;
+		}
+
+		let extra = <div>
+			{linkLanesDiv("Failed on", prFailure.lanes, true)}
+			<div>PR caused failure? {suspicionMessage}</div>
+		</div>
+		return renderFailureBase(prFailure.failureListing.failure, extra)
 	}
 
 	beforeFailureCount() { return before_collapse_pr }
@@ -745,8 +787,11 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 			</div>
 		}
 
+		// TODO: Status
 		return <div className="verbosePr" key={prBuildKey}>
 			{commitTitle}
+			{linkLanesDiv("Built on", prBuildListing.lanes)}
+			{linkLanesDiv("Build in progress", prBuildListing.lanesInProgress)}
 			{result}
 		</div>
 	}
