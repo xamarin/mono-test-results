@@ -864,8 +864,15 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 				<PrBuildDisplay prBuildKey={prBuildKey} prBuildListing={prBuildListing} prDisplayContext={this.props.prDisplayContext} />
 			</div>
 		} else {
+			let label:string = null
+
+			if (objectSize(prBuildListing.lanesInProgress))
+				label = "No test failures (yet)"
+			else
+				label = "No test failures!"
+
 			result = <div className="prTestFailures">
-				<ul className="fakeTestFailuresList"><li className="ok"><b>No test failures!</b></li></ul>
+				<ul className="fakeTestFailuresList"><li className="ok"><b>{label}</b></li></ul>
 			</div>
 		}
 
