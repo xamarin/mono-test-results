@@ -276,6 +276,16 @@ function formatRange(range: DateRange) {
 	return <span className="datetimeRange">{formatDate(range.early)} - {formatDate(range.late)}</span>
 }
 
+function formatRangeLaterWithLabel(range: DateRange, label:string) {
+	return <span className="datetime">
+		{label}: {
+			range.late
+				? formatDate(range.late)
+				: <span>never</span>
+		}
+	</span>
+}
+
 // Components: Top title bar
 
 let titleBarSpec = [

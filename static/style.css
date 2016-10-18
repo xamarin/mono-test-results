@@ -114,7 +114,8 @@ li.failureExpand a {
 }
 
 .datetime {
-	font-size: 80%;
+	/* Using "rem" instead of "%" means .datetime can nest */
+	font-size: 0.8rem;
 }
 
 .buildResultString {}

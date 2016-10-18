@@ -764,7 +764,7 @@ class PrBuildDisplay extends ExpandableWithFailures<PrBuildDisplayProps, string>
 				; <FailureFilterLink count={countKeys(failureListing.builds)}
 				of={context.builds} isLane={false} failure={failure} />
 				<br />
-				<span className="datetime">Most recent failure: {failureListing.dateRange.late ? formatDate(failureListing.dateRange.late) : <span>never</span>}</span>
+				{formatRangeLaterWithLabel(failureListing.dateRange, "Most recent failure")}
 			</p>
 		}
 
@@ -816,7 +816,11 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 
 		let commitTitle: JSX.Element = null
 		if (sampleBuild) {
-			commitTitle = <div><b>{linkFor(sampleBuild, false, false)}</b><br />{formatRange(prBuildListing.dateRange)}</div>
+			commitTitle = <div>
+				<b>{linkFor(sampleBuild, false, false)}</b>
+				<br />
+				{formatRangeLaterWithLabel(prBuildListing.dateRange, "Last built")}
+			</div>
 		} else {
 			commitTitle = <span>Commit {prBuildKey} [could not display]</span>
 		}
@@ -1148,7 +1152,7 @@ let ContentArea = React.createClass({
 					})
 
 					return <div>
-						<p>Are the failures in this PR new? Comparing builds from {formatRange(dateRange)}</p>
+						<p>Are the failures in the PR new? Comparing builds from {formatRange(dateRange)}</p>
 						{prDisplay}
 					</div>
 				}
