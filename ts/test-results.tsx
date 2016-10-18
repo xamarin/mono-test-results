@@ -693,7 +693,7 @@ class PrBuildDisplay extends ExpandableWithFailures<PrBuildDisplayProps, string>
 				suspicionMessage = <span className="failedTestVerdict">Probably, failure is new</span>
 				break;
 			case PrSuspicion.Maybe:
-				suspicionMessage = <span><b>Maybe</b>, recent failures in same suite may or may not be the same</span>
+				suspicionMessage = <span><b className="iffyTestVerdict">Maybe</b>, test suite has failed recently but this may or may not be the same</span>
 				break;
 			case PrSuspicion.ProbablyNot:
 				suspicionMessage = <span><b>Probably not</b>, failure has been seen before</span>
@@ -765,7 +765,7 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 					suspicionMessage = <span className="failedTestVerdict">Probably broken, there are new failures</span>
 					break;
 				case PrSuspicion.Maybe:
-					suspicionMessage = <span><b>Maybe broken</b>, a suite failed which has failed before-- but it's not known if it's for the same reason</span>
+					suspicionMessage = <span><b className="iffyTestVerdict">Maybe broken</b>, a suite failed which has failed before-- but it's not known if it's for the same reason</span>
 					break;
 				case PrSuspicion.ProbablyNot:
 					suspicionMessage = <span><b>Probably okay</b>, all failures have been seen before</span>
@@ -1085,7 +1085,7 @@ let ContentArea = React.createClass({
 							if (failure.test) {
 								verdict = <span><b>Probably not</b>, other recent failures</span>
 							} else {
-								verdict = <span><b>Maybe</b>, recent failures in same suite may or may not be the same</span>
+								verdict = <span><b className="iffyTestVerdict">Maybe</b>, test suite has failed recently but this may or may not be the same</span>
 							}
 
 							extra = <div>

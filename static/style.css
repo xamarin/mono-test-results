@@ -98,6 +98,11 @@ li.failureExpand a {
 	color:#CC0000;
 }
 
+.iffyTestVerdict {
+	font-weight:bold;
+	color:#FC94AF;
+}
+
 .choice {
 	font-weight:bold;
 }
