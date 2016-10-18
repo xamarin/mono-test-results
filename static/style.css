@@ -62,16 +62,21 @@ li.failure, li.warning, li.ok {
 	background-size: 16px 16px;
 }
 
-
+li.failureExpand, li.prExpand {
+	list-style-type:none;
+}
 
 li.failureExpand {
-	list-style-type:none;
 	margin:20px;
 	font-weight:bold;
 }
 
 li.failureExpand a {
 	color:#CC0000;
+}
+
+.prTestFailures li.failure, .verbosePr {
+	margin-bottom:1.12em;
 }
 
 .invocation {

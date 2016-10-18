@@ -485,7 +485,7 @@ let LaneErrorBox = React.createClass({
 			let errorDisplay = errors.map(lane =>
 				<div className="errorItem">
 					<Icon src="images/error.png" />
-					Failed to load index for lane <strong>{lane.name}</strong>
+					Failed to load index for lane <b>{lane.name}</b>
 				</div>
 			)
 			return <div className="errorBox">{errorDisplay}</div>
@@ -690,13 +690,13 @@ class PrBuildDisplay extends ExpandableWithFailures<PrBuildDisplayProps, string>
 				suspicionMessage = <span className="failedTestVerdict">Probably, this is a build failure</span>
 				break;
 			case PrSuspicion.Probably:
-				suspicionMessage = <span><span className="failedTestVerdict">Probably</span>, no other failures seen recently</span>
+				suspicionMessage = <span className="failedTestVerdict">Probably, failure is new</span>
 				break;
 			case PrSuspicion.Maybe:
 				suspicionMessage = <span><b>Maybe</b>, recent failures in same suite may or may not be the same</span>
 				break;
 			case PrSuspicion.ProbablyNot:
-				suspicionMessage = <span><b>Probably not</b>, has been seen failing recently</span>
+				suspicionMessage = <span><b>Probably not</b>, failure has been seen before</span>
 				break;
 			case PrSuspicion.NoErrors:
 				suspicionMessage = <span>[???]</span>
@@ -734,12 +734,11 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 			prTitle = <span>PR {this.props.prKey} [could not display]</span>
 		}
 
-		// FIXME: Don't blockquote, use a div with a left margin
 		return <div key={this.props.prKey}>
 			{prTitle}
-			<blockquote>
+			<ul className="prBuilds">
 				{prDisplay}
-			</blockquote>
+			</ul>
 		</div>
 	}
 
@@ -776,32 +775,32 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 					break;
 			}
 
-			result = <div>
+			result = <div className="prTestFailures">
 				<div>PR is: {suspicionMessage}</div>
-				<p>Failures:</p>
+				<p><b>Failures:</b></p>
 				<PrBuildDisplay prBuildKey={prBuildKey} prBuildListing={prBuildListing} />
 			</div>
 		} else {
-			result = <div>
-				No errors!
-			</div>
+			result = <p className="prTestFailures">
+				<ul><li className="ok"><b>No test failures!</b></li></ul>
+			</p>
 		}
 
 		// TODO: Status
-		return <div className="verbosePr" key={prBuildKey}>
+		return <li className="verbosePr" key={prBuildKey}>
 			{commitTitle}
 			{linkLanesDiv("Built on", prBuildListing.lanes)}
 			{linkLanesDiv("Build in progress", prBuildListing.lanesInProgress)}
 			{result}
-		</div>
+		</li>
 	}
 
 	expandItemRender(failureCount:number) : JSX.Element {
 		let label = "[" + failureCount + " more commit" +
 			(failureCount>1?"s":"") + " for PR " + this.props.prKey + "]"
-		return <p key="expand" className="prExpand">
+		return <li key="expand" className="prExpand">
 			{this.expandButtonRender(label)}
-		</p>
+		</li>
 	}
 }
 
