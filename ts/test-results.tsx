@@ -520,7 +520,7 @@ let LaneErrorBox = React.createClass({
 		let errors = filterLanes().filter(lane => lane.status.failed)
 		if (errors.length) {
 			let errorDisplay = errors.map(lane =>
-				<div className="errorItem">
+				<div className="errorItem" key={lane.name}>
 					<Icon src="images/error.png" />
 					Failed to load index for lane <b>{lane.name}</b>
 				</div>
@@ -1181,7 +1181,7 @@ registerRender( () => {
 			if (lane.isPr && prVisible.value == Visibility.Hide)
 				continue
 			let value = laneVisible[idx]
-			laneCheckboxes.push(<span className="checkboxContainer">
+			laneCheckboxes.push(<span className="checkboxContainer" key={idx}>
 				<CheckboxVisibility enum={Visibility} data={value} value={value.value}
 					on={Visibility.Show} off={Visibility.Hide}
 					label={lane.name} /> {" "}
