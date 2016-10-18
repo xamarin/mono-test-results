@@ -85,6 +85,14 @@ let massFailures = [
 	)
 ]
 
+// Some failure steps have different labels from lane to lane. This collapses
+// known-identical steps into a single string-matchable name.
+// This might not be the best way to do this.
+// FIXME: NO MATTER WHAT, CHANGE THIS ONCE BTLS BECOMES THE DEFAULT ON LINUX
+let failureStepRemap = emptyObject()
+failureStepRemap["make -w -C mcs/class/System run-test"] =
+	"bash -c export MONO_TLS_PROVIDER=legacy && make -w -C mcs/class/System run-test"
+
 // Load
 class Build extends BuildStandard {
 	failures: Failure[]
@@ -109,9 +117,13 @@ class Build extends BuildStandard {
 		for (let json of jsons) {
 			if (json.final_code) {
 				let resolved = false
+				let invocation = json.invocation
+				if (invocation in failureStepRemap)
+					invocation = failureStepRemap[invocation]
+
 				if (json.babysitter_protocol || json.loaded_xml) {
 					for(let testName in json.tests) {
-						let failure = new Failure(json.invocation, testName)
+						let failure = new Failure(invocation, testName)
 						let test = json.tests[testName]
 						if (test.crash_failures)
 							failure.kind = FailureKind.Crash
@@ -128,7 +140,7 @@ class Build extends BuildStandard {
 					}
 				}
 				if (!resolved) {
-					let failure = new Failure(json.invocation)
+					let failure = new Failure(invocation)
 					if (json.final_code == "124")
 						failure.kind = FailureKind.Hang
 					this.failures.push(failure)
