@@ -666,9 +666,17 @@ function linkLanesDiv(title:string, dict:BuildDict, linkFailures = false) {
 	return <div>{title}: {links}</div>
 }
 
+// "State of the world" data shared by all failure displays
+interface PrDisplayContext {
+	trials:number
+	builds:number
+	lanes:number
+}
+
 class PrBuildDisplayProps {
 	prBuildKey: string
 	prBuildListing: PrBuildListing
+	prDisplayContext:PrDisplayContext
 }
 
 class PrBuildDisplay extends ExpandableWithFailures<PrBuildDisplayProps, string> {
@@ -684,18 +692,22 @@ class PrBuildDisplay extends ExpandableWithFailures<PrBuildDisplayProps, string>
 	itemRender(prFailureKey: string) {
 		let prFailure = this.props.prBuildListing.failureDict[prFailureKey]
 		let suspicionMessage: JSX.Element = null
+		let otherFailures:JSX.Element = null
+		let shouldShowOtherFailures = false
 
 		switch (prFailure.suspicion()) {
 			case PrSuspicion.Build:
 				suspicionMessage = <span className="failedTestVerdict">Probably, this is a build failure</span>
 				break;
 			case PrSuspicion.Probably:
-				suspicionMessage = <span className="failedTestVerdict">Probably, failure is new</span>
+				suspicionMessage = <span className="failedTestVerdict">Probably, test failure is new</span>
 				break;
 			case PrSuspicion.Maybe:
+				shouldShowOtherFailures = true
 				suspicionMessage = <span><b className="iffyTestVerdict">Maybe</b>, test suite has failed recently but this may or may not be the same</span>
 				break;
 			case PrSuspicion.ProbablyNot:
+				shouldShowOtherFailures = true
 				suspicionMessage = <span><b>Probably not</b>, failure has been seen before</span>
 				break;
 			case PrSuspicion.NoErrors:
@@ -703,9 +715,25 @@ class PrBuildDisplay extends ExpandableWithFailures<PrBuildDisplayProps, string>
 				break;
 		}
 
+		let failureListing = prFailure.failureListing
+		let failure = failureListing.failure
+		let context = this.props.prDisplayContext
+		if (failureListing.count > 0) {
+			otherFailures = <p>
+				Recently failed on <b>{failureListing.count}/{context.trials} runs</b>;{" "}
+				<FailureFilterLink count={countKeys(failureListing.lanes)}
+				of={context.lanes} isLane={true} failure={failure} />
+				; <FailureFilterLink count={countKeys(failureListing.builds)}
+				of={context.builds} isLane={false} failure={failure} />
+				<br />
+				<span className="datetime">Most recent failure: {failureListing.dateRange.late ? formatDate(failureListing.dateRange.late) : <span>never</span>}</span>
+			</p>
+		}
+
 		let extra = <div>
 			{linkLanesDiv("Failed on", prFailure.lanes, true)}
 			<div>PR caused failure? {suspicionMessage}</div>
+			{otherFailures}
 		</div>
 		return renderFailureBase(prFailure.failureListing.failure, extra)
 	}
@@ -716,6 +744,7 @@ class PrBuildDisplay extends ExpandableWithFailures<PrBuildDisplayProps, string>
 class PrDisplayProps {
 	prKey: string
 	prListing: PrListing
+	prDisplayContext:PrDisplayContext
 }
 
 class PrDisplay extends Expandable<PrDisplayProps, string> {
@@ -749,7 +778,7 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 
 		let commitTitle: JSX.Element = null
 		if (sampleBuild) {
-			commitTitle = <div><b>{linkFor(sampleBuild, false, false)}</b></div>
+			commitTitle = <div><b>{linkFor(sampleBuild, false, false)}</b><br />{formatRange(prBuildListing.dateRange)}</div>
 		} else {
 			commitTitle = <span>Commit {prBuildKey} [could not display]</span>
 		}
@@ -762,7 +791,7 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 					suspicionMessage = <span className="failedTestVerdict">Probably broken, at least one build failed</span>
 					break;
 				case PrSuspicion.Probably:
-					suspicionMessage = <span className="failedTestVerdict">Probably broken, there are new failures</span>
+					suspicionMessage = <span className="failedTestVerdict">Probably broken, there are new test failures</span>
 					break;
 				case PrSuspicion.Maybe:
 					suspicionMessage = <span><b className="iffyTestVerdict">Maybe broken</b>, a suite failed which has failed before-- but it's not known if it's for the same reason</span>
@@ -778,7 +807,7 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 			result = <div className="prTestFailures">
 				<div>PR is: {suspicionMessage}</div>
 				<p><b>Failures:</b></p>
-				<PrBuildDisplay prBuildKey={prBuildKey} prBuildListing={prBuildListing} />
+				<PrBuildDisplay prBuildKey={prBuildKey} prBuildListing={prBuildListing} prDisplayContext={this.props.prDisplayContext} />
 			</div>
 		} else {
 			result = <p className="prTestFailures">
@@ -1063,50 +1092,15 @@ let ContentArea = React.createClass({
 						}
 					}
 
-					function renderFailure(failure:Failure) {
-						let failureListing = failureListings[failure.key()]
-
-						let extra:JSX.Element = null
-
-						if (buildFailure(failure)) {
-							extra = <div>
-								PR caused failure? <span className="failedTestVerdict">Probably, this is a build failure</span>
-							</div>
-						} else if (!failureListing || failureListing.count == 0) {
-							extra = <div>
-								Recently failed on <b>0/{trials} runs</b>;{" "}
-								<b>0/{readyLanes.length} lanes</b>; <b>0/{countKeys(uniqueBuilds)} builds</b>
-								<br />
-								PR caused failure? <span className="failedTestVerdict">Probably</span>, no other recent failures
-							</div>
-						} else {
-							let verdict:JSX.Element = null
-
-							if (failure.test) {
-								verdict = <span><b>Probably not</b>, other recent failures</span>
-							} else {
-								verdict = <span><b className="iffyTestVerdict">Maybe</b>, test suite has failed recently but this may or may not be the same</span>
-							}
-
-							extra = <div>
-								Recently failed on <b>{failureListing.count}/{trials} runs</b>;{" "}
-								<FailureFilterLink count={countKeys(failureListing.lanes)}
-								of={readyLanes.length} isLane={true} failure={failure} />
-								; <FailureFilterLink count={countKeys(failureListing.builds)}
-								of={countKeys(uniqueBuilds)} isLane={false} failure={failure} />
-								<br />
-								PR caused failure? {verdict}
-								<br />
-								<span className="datetime">Most recent failure: {failureListing.dateRange.late ? formatDate(failureListing.dateRange.late) : <span>never</span>}</span>
-							</div>
-						}
-
-						return renderFailureBase(failure, extra)
+					let prDisplayContext = {
+						trials: trials,
+						builds: countKeys(uniqueBuilds),
+						lanes: readyLanes.length
 					}
 
 					let prDisplay = Object.keys(prListings).sort(dateRangeLaterCmpFor(prListings)).map(prKey => {
 						let prListing = prListings[prKey]
-						return <PrDisplay prKey={prKey} prListing={prListing} />
+						return <PrDisplay prKey={prKey} prListing={prListing} prDisplayContext={prDisplayContext} />
 					})
 
 					return <div>
