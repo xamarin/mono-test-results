@@ -186,6 +186,7 @@ let displaySpan = new HashRef("span", DisplaySpan, DisplaySpan.Last48Hr)
 let testFilterStep = new HashRef<string>("filterTestStep", null, null)
 let testFilterTest = new HashRef<string>("filterTestCase", null, null)
 let prFilter = new HashRef<string>("filterPr", null, null)
+let prGithubFilter = new HashRef<string>("filterGithubUserPr", null, null)
 
 // Test filters
 
@@ -470,14 +471,42 @@ class TestFilterDisplay extends React.Component<TestFilterDisplayProps, {}> {
 	}
 }
 
-class PrFilterDisplay extends React.Component<{}, {}> {
+class PrFilterDisplayState {
+	nameInput: string
+}
+
+function clearPrFilters() {
+	prFilter.clear()
+	prGithubFilter.clear()
+}
+
+class PrFilterDisplay extends React.Component<{}, PrFilterDisplayState> {
+	constructor(props: {}) {
+		super(props)
+		this.state = {nameInput: null}
+	}
+
 	render() {
-		if (!prFilter.value || groupBy.value != GroupBy.PRs)
+		if (groupBy.value != GroupBy.PRs)
 			return null
 
-		return showingOnly(<b>PR {prFilter.value}</b>, () => {
-			prFilter.clear()
-		})
+		if (prFilter.value) {
+			return showingOnly(<b>PR {prFilter.value}</b>, clearPrFilters)
+		} else if (prGithubFilter.value) {
+			return showingOnly(<b>GitHub user {prGithubFilter.value}</b>, clearPrFilters)
+		} else {
+			return <span>
+				{" "} | Filter by GitHub handle:{" "}
+				<input value={this.state.nameInput} onChange={ (evt) => {
+					this.setState({nameInput: (evt.target as any).value})
+				}} /> {" "}
+				<button type="button" onClick={ () => {
+					let nameInput = this.state.nameInput
+					this.setState({nameInput: null})
+					prGithubFilter.set(nameInput)
+				}}>Search</button>
+			</span>
+		}
 	}
 }
 
@@ -1052,6 +1081,9 @@ let ContentArea = React.createClass({
 							if (lane.isPr && prFilter.value) {
 								// FIXME: Should builds that took place after the PR build be filtered?
 								if (build.pr != prFilter.value)
+									continue
+							} else if (lane.isPr && prGithubFilter.value) {
+								if (build.prAuthor != prGithubFilter.value)
 									continue
 							} else {
 								if (!buildInTimespan(build))
