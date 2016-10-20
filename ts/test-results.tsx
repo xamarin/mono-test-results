@@ -1196,9 +1196,40 @@ registerRender( () => {
 		  </span>
 		: null
 
+	// FIXME: This is a bit heaviweight and should be moved to a component.
 	let laneCheckboxDisplay = null
 	if (laneVisible) {
 		let laneCheckboxes : JSX.Element[] = []
+		let laneButtons : JSX.Element[] = []
+
+		function pushLaneButtons(label:string, filter:(lane:Lane<Build>)=>boolean) {
+			function makeHandler(sign:boolean) {
+				return () => {
+					let anythingChanged = false
+					for (let idx in lanes) {
+						let lane = lanes[idx]
+						if (filter(lane)) {
+							laneVisible[idx].set(sign ? Visibility.Show : Visibility.Hide)
+							anythingChanged = true
+						}
+					}
+					if (anythingChanged)
+						invalidateUi()
+				}
+			}
+			laneButtons.push(<span key={label+"Spacer"}>{
+				laneButtons.length == 0 ? " " : " | "
+			}</span>)
+			laneButtons.push(<Clickable key={label+"On"} label={label+ " on"} handler={makeHandler(true)}/>)
+			laneButtons.push(<span key={label+"Spacer2"}> | </span>)
+			laneButtons.push(<Clickable key={label+"Off"} label={label+ " off"} handler={makeHandler(false)}/>)
+		}
+		pushLaneButtons("All",      (lane)=>true)
+		pushLaneButtons("Standard", (lane)=>lane.isCore)
+		pushLaneButtons("Windows", (lane)=>lane.name.indexOf("Windows") >= 0)
+		pushLaneButtons("Coop", (lane)=>lane.name.indexOf("Coop") >= 0)
+		pushLaneButtons("AOT",  (lane)=>lane.name.indexOf("FullAOT") >= 0)
+
 		for (let idx in lanes) {
 			let lane = lanes[idx]
 			if (lane.isPr && prVisible.value == Visibility.Hide)
@@ -1210,7 +1241,7 @@ registerRender( () => {
 					label={lane.name} /> {" "}
 			</span>)
 		}
-		laneCheckboxDisplay = <div><br /><div className="checkboxGrid">{laneCheckboxes}</div></div>
+		laneCheckboxDisplay = <div><br /><div>Lane filters:<span className="laneFilterButtons">{laneButtons}</span></div><div className="checkboxGrid">{laneCheckboxes}</div></div>
 	}
 
 	ReactDOM.render(<div>
