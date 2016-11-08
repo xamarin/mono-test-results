@@ -459,6 +459,7 @@ let LoadingBox = React.createClass({
 
 let ReloadControl = makeReloadControl(lanes, currentlyLoading)
 
+// UI to display/dismiss a test filter
 function showingOnly(display:JSX.Element, clear: ()=>void) {
 	return <span> | Showing only {display} <Clickable label="[X]" key={null}
 		handler={e => { // Note: Clears global handler
@@ -467,6 +468,42 @@ function showingOnly(display:JSX.Element, clear: ()=>void) {
 	}} /></span>
 }
 
+// UI to enter a new filter string
+class FilterEntryProps {
+	label: string
+	filterRef: HashRef<string>
+}
+
+class FilterEntryState {
+	input: string
+}
+
+class FilterEntry extends React.Component<FilterEntryProps, FilterEntryState> {
+	constructor(props: FilterEntryProps) {
+		super(props)
+		this.state = {input: null}
+	}
+
+	render() {
+		return <span>
+			Filter by {this.props.label}:{" "}
+			<form onSubmit={ (evt) => {
+				let input = this.state.input
+				this.setState({input: null})
+				this.props.filterRef.set(input)
+
+				evt.preventDefault() // Don't submit!
+			}} className="inlineForm">
+				<input value={this.state.input} onChange={ (evt) => {
+					this.setState({input: (evt.target as any).value})
+				}} /> {" "}
+				<input type="submit" value="Search" />
+			</form>
+		</span>
+	}
+}
+
+// UI to show current filters on build/lane panes
 class TestFilterDisplayProps {
 	testFilter: TestFilter
 }
@@ -483,22 +520,14 @@ class TestFilterDisplay extends React.Component<TestFilterDisplayProps, {}> {
 	}
 }
 
-class PrFilterDisplayState {
-	nameInput: string
-}
-
+// UI to show current filters on PR lane
 function clearPrFilters() {
 	prFilter.clear()
 	prGithubFilter.clear()
 }
 
-class PrFilterDisplay extends React.Component<{}, PrFilterDisplayState> {
-	constructor(props: {}) {
-		super(props)
-		this.state = {nameInput: null}
-	}
-
-	render() {
+let PrFilterDisplay = React.createClass({
+	render: function() {
 		if (groupBy.value != GroupBy.PRs)
 			return null
 
@@ -508,24 +537,12 @@ class PrFilterDisplay extends React.Component<{}, PrFilterDisplayState> {
 			return showingOnly(<b>GitHub user {prGithubFilter.value}</b>, clearPrFilters)
 		} else {
 			return <span>
-				{" "} | Filter by GitHub handle:{" "}
-				<form onSubmit={ (evt) => {
-					let nameInput = this.state.nameInput
-					this.setState({nameInput: null})
-					prGithubFilter.set(nameInput)
-
-					evt.preventDefault() // Don't submit!
-				}} className="inlineForm">
-					<input value={this.state.nameInput} onChange={ (evt) => {
-						this.setState({nameInput: (evt.target as any).value})
-					}} /> {" "}
-					<input type="submit" value="Search" />
-				</form>
+				{" "} | <FilterEntry label="PR#" filterRef={prFilter} />
+				{" "} | <FilterEntry label="GitHub handle" filterRef={prGithubFilter} />
 			</span>
 		}
 	}
-}
-
+})
 
 let LaneErrorBox = React.createClass({
 	render: function() {
