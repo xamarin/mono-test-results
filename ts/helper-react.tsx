@@ -88,12 +88,13 @@ class HashRef<T> extends Ref<T> {
 	hashKey:string
 	enum: any
 	active: boolean // Has been set away from default
+	defaultValue: T // For resetting
 	constructor(hashKey:string, _enum:any, defaultValue:T) {
 		let overloaded = hashHas(hashKey)
 		super(overloaded ? enumFilter(hashValue(hashKey), _enum) : defaultValue)
 		this.hashKey = hashKey
 		this.enum = _enum
-		this.active = overloaded
+		this.defaultValue = defaultValue
 		hashRefs[hashKey] = this
 	}
 
@@ -143,10 +144,16 @@ function triggerHashPush() {
 
 function hashchange() {
 	hashOptions = hashToDict( location.hash ? location.hash : '' )
+
+	// Run through existing refs and clear anything that's been unset
 	for (let key of Object.keys(hashRefs)) {
-		let ref = hashRefs[key]
-		ref.active = false
+		if (!(key in hashOptions)) {
+			let ref = hashRefs[key]
+			ref.active = false
+			ref.value = ref.defaultValue
+		}
 	}
+	// Run through hash options and set corresponding refs
 	for (let key of Object.keys(hashOptions)) {
 		let ref = hashRefs[key]
 		if (ref) {
