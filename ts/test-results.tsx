@@ -31,12 +31,19 @@ function failureDescribe(kind: FailureKind) {
 	}
 }
 
+// PRs and normal builds set this differently.
+// We need to normalize step strings by removing it.
+let ciPrSanitizer = /\s+CI_PR=\d*$/
+
 class Failure {
 	step: string
 	test: string
 	kind: FailureKind
 
 	constructor(step:string, test:string = null) {
+		if (step)
+			step = step.replace(ciPrSanitizer, "")
+
 		this.step = step
 		this.test = test
 		this.kind = FailureKind.Unknown
