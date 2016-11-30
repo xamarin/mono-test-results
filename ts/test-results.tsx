@@ -1241,18 +1241,19 @@ registerRender( () => {
 						invalidateUi()
 				}
 			}
-			laneButtons.push(<span key={label+"Spacer"}>{
+			laneButtons.push(<span key={label+"Label"}>{
 				laneButtons.length == 0 ? " " : " | "
-			}</span>)
-			laneButtons.push(<Clickable key={label+"On"} label={label+ " on"} handler={makeHandler(true)}/>)
-			laneButtons.push(<span key={label+"Spacer2"}> | </span>)
-			laneButtons.push(<Clickable key={label+"Off"} label={label+ " off"} handler={makeHandler(false)}/>)
+			}<b>{label}</b> </span>)
+			laneButtons.push(<Clickable key={label+"On"} label="On" handler={makeHandler(true)}/>)
+			laneButtons.push(<span key={label+"Spacer2"}>, </span>)
+			laneButtons.push(<Clickable key={label+"Off"} label="Off" handler={makeHandler(false)}/>)
 		}
 		pushLaneButtons("All",      (lane)=>true)
 		pushLaneButtons("Standard", (lane)=>lane.isCore)
-		pushLaneButtons("Windows", (lane)=>lane.name.indexOf("Windows") >= 0)
-		pushLaneButtons("Coop", (lane)=>lane.name.indexOf("Coop") >= 0)
-		pushLaneButtons("AOT",  (lane)=>lane.name.indexOf("FullAOT") >= 0)
+		pushLaneButtons("Windows",  (lane)=>lane.name.indexOf("Windows") >= 0)
+		pushLaneButtons("Coop",     (lane)=>lane.name.indexOf("Coop") >= 0)
+		// pushLaneButtons("Hybrid",   (lane)=>lane.name.indexOf("HybridAOT") >= 0) // TODO
+		pushLaneButtons("AOT",      (lane)=>lane.name.indexOf("FullAOT") >= 0)
 
 		for (let idx in lanes) {
 			let lane = lanes[idx]
