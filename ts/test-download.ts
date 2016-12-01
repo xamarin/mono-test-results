@@ -170,7 +170,7 @@ let jenkinsLaneSpecsPlus = [
 	["Linux Intel32 Coop",       "test-mono-mainline-coop/label=ubuntu-1404-i386"],
 	["Linux Intel64 Coop",       "test-mono-mainline-coop/label=ubuntu-1404-amd64"],
 	["Linux Intel32 FullAOT",    "test-mono-mainline-fullaot/label=ubuntu-1404-i386"],
-	["Linux Intel64 FullAOT",    "test-mono-mainline-fullaot/label=ubuntu-1404-amd64"],
+	["Linux Intel64 FullAOT",    "test-mono-mainline-fullaot/label=ubuntu-1404-amd64", "test-mono-pull-request-amd64-fullaot"],
 	["Linux ARM64 FullAOT",      "test-mono-mainline-fullaot/label=debian-8-arm64"],
 	["Linux ARM32-hf FullAOT",   "test-mono-mainline-fullaot/label=debian-8-armhf"],
 	["Linux ARM32-el FullAOT",   "test-mono-mainline-fullaot/label=debian-8-armel"],
@@ -436,18 +436,20 @@ function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 	// Construct lanes
 	let lanes: Lane<B>[] = []
 
-	function make(specs:string[][]) {
+	function make(specs:string[][], allCore:boolean) {
 		for (let spec of specs) {
+			let name = spec[0]
+			// "Core" builds currently consist of anything in jenkinsLaneSpecs, plus Windows builds.
+			let isCore = allCore || startsWith(name, "Windows")
+
 			// Spec is a triplet of name, normal URL tag, PR URL tag
 			let columns = allowPr ? 2 : 1 // Look at PR URL tag column?
 			for (let d = 0; d < columns; d++) {
-				let name = spec[0]
 				if (d)
 					name += " (PR)"
 				let laneName = spec[d+1]
 				if (laneName) {
-					// Notice: isCore (build every commit) is established by a PR lane existing for an arch
-					let lane = new Lane(lanes.length, b, name, laneName, !!d, spec.length > 2)
+					let lane = new Lane(lanes.length, b, name, laneName, !!d, isCore)
 					lanes.push(lane)
 					lane.load()
 				}
@@ -456,15 +458,15 @@ function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 	}
 
 	if (haveOverloadLaneContents) {
-		make(overloadLaneContents)
+		make(overloadLaneContents, false)
 	} else {
-		make(jenkinsLaneSpecs)
+		make(jenkinsLaneSpecs, true)
 
 		if (laneVisibilityLevel >= 2)
-			make(jenkinsLaneSpecsPlus)
+			make(jenkinsLaneSpecsPlus, false)
 
 		if (laneVisibilityLevel >= 3)
-			make(jenkinsLaneSpecsPlusValgrind)
+			make(jenkinsLaneSpecsPlusValgrind, false)
 	}
 
 	return lanes
