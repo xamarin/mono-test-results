@@ -13,6 +13,7 @@ const showLaneCheckboxes = typeof overloadShowLaneCheckboxes !== 'undefined' ? o
 
 enum FailureKind {
     Unknown,
+    Build,
     Test,
     Crash,
     Hang
@@ -20,6 +21,8 @@ enum FailureKind {
 
 function failureDescribe(kind: FailureKind) {
 	switch (kind) {
+		case FailureKind.Build:
+			return "Build failure"
 		case FailureKind.Test:
 			return "Testcase failure"
 		case FailureKind.Crash:
@@ -150,6 +153,8 @@ class Build extends BuildStandard {
 					let failure = new Failure(invocation)
 					if (json.final_code == "124")
 						failure.kind = FailureKind.Hang
+					else if (buildFailure(failure))
+						failure.kind = FailureKind.Build
 					this.failures.push(failure)
 				}
 			}
