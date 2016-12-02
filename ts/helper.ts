@@ -26,9 +26,9 @@ function isNumberChar(str:string) {
 	return numTest.test(str)
 }
 
-let letterTest = /\w/
+let nonLetterTest = /\W/g
 function lettersOnly(str:string) {
-	return str.replace(letterTest, '')
+	return str.replace(nonLetterTest, '')
 }
 
 // Assume NaNs and infinities indicate an error somewhere
