@@ -167,6 +167,8 @@ let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 let jenkinsLaneSpecsPlus = [
 	["Windows Intel32",          "z/label=w32", "w"],
 	["Windows Intel64",          "z/label=w64", "x"],
+	["Linux Intel64 MCS",        "test-mono-mainline-mcs/label=ubuntu-1404-amd64",     "test-mono-pull-request-amd64-mcs"],
+	["Linux Intel64 Checked",    "test-mono-mainline-checked/label=ubuntu-1404-amd64"],
 	["Linux Intel32 Coop",       "test-mono-mainline-coop/label=ubuntu-1404-i386"],
 	["Linux Intel64 Coop",       "test-mono-mainline-coop/label=ubuntu-1404-amd64"],
 	["Linux Intel32 FullAOT",    "test-mono-mainline-fullaot/label=ubuntu-1404-i386"],
@@ -175,8 +177,7 @@ let jenkinsLaneSpecsPlus = [
 	["Linux ARM32-hf FullAOT",   "test-mono-mainline-fullaot/label=debian-8-armhf"],
 	["Linux ARM32-el FullAOT",   "test-mono-mainline-fullaot/label=debian-8-armel"],
 	["Linux Intel64 HybridAOT",  "test-mono-mainline-hybridaot/label=ubuntu-1404-amd64"],
-	["Linux Intel64 Bitcode",    "test-mono-mainline-bitcode/label=ubuntu-1404-amd64"],
-	["Linux Intel64 Checked",    "test-mono-mainline-checked/label=ubuntu-1404-amd64"]
+	["Linux Intel64 Bitcode",    "test-mono-mainline-bitcode/label=ubuntu-1404-amd64"]
 ]
 
 let jenkinsLaneSpecsPlusValgrind = [
@@ -439,7 +440,8 @@ function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 	function make(specs:string[][], allCore:boolean) {
 		for (let spec of specs) {
 			let name = spec[0]
-			// "Core" builds currently consist of anything in jenkinsLaneSpecs, plus Windows builds.
+			// "Core" builds currently consist of anything in jenkinsLaneSpecs, plus Windows builds
+			// TODO: Add || endsWith(name, "MCS")
 			let isCore = allCore || startsWith(name, "Windows")
 
 			// Spec is a triplet of name, normal URL tag, PR URL tag
@@ -526,7 +528,7 @@ class BuildStandard extends BuildBase {
 					if (blobs) {
 						for (let blob of blobs) {
 							let url = blob.blobURL
-							if (url.endsWith("babysitter_report.json_lines"))
+							if (endsWith(url, "babysitter_report.json_lines"))
 								this.babysitterBlobUrl = url
 						}
 					}

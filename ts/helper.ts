@@ -6,6 +6,10 @@ function startsWith(str:string, search:string) {
 	return str.substring(0,search.length) == search
 }
 
+function endsWith(str:string, search:string) {
+	return str.substring(str.length - search.length) == search
+}
+
 function splitOne(str:string, demarcate:string) {
 	let index = str.indexOf(demarcate)
 	if (index < 0)
