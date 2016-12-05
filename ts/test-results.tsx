@@ -446,6 +446,7 @@ function buildFailure(failure: Failure) {
 	return failure.step && (
 		   startsWith(failure.step, "./autogen.sh")
 		|| isMakeLine.test( failure.step )
+		|| failure.step.indexOf("MSBuild.exe") >= 0
 	)
 }
 
