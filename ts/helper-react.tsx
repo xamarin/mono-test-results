@@ -24,7 +24,7 @@ class A extends React.Component<AProps,{}> {
 }
 
 class ClickableProps {
-	handler: React.EventHandler<React.MouseEvent>
+	handler: React.EventHandler<React.MouseEvent<any>>
 	key: string
 	label: string
 }
@@ -40,7 +40,7 @@ class Clickable extends React.Component<ClickableProps, {}> {
 }
 
 class ClickableSpanProps {
-	handler: React.EventHandler<React.MouseEvent>
+	handler: React.EventHandler<React.MouseEvent<any>>
 	key: string
 }
 

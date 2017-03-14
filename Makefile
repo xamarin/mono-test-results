@@ -21,9 +21,9 @@ all: install/index.html install/style.css install/builds.html install/builds-plu
 	 install/js/react-dom.js install/js/react.js install/js/jquery.js \
 	 install/js/lz.js install/js/priorityqueue.js
 
+# Fake out old `tsd` typings manager. TODO: Use packages.json with explicit versioning
 tsd:
-	tsd init
-	tsd install react-global jquery --save
+	npm i @types/react-dom @types/react @types/jquery
 
 install/index.html install/style.css install/builds.html install/builds-plus.html: static/index.html static/style.css static/builds.html static/builds-plus.html
 	rsync -urhi --exclude=.DS_Store static/ install/

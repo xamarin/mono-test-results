@@ -1,5 +1,3 @@
-/// <reference path="../typings/tsd.d.ts" />
-
 // String ops
 
 function startsWith(str:string, search:string) {
