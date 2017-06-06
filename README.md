@@ -2,14 +2,14 @@ Human readable display of Mono Jenkins logs.
 
 To set up this project, run:
 
-    npm install -g typescript tsd
-    make tsd
+    npm install -g typescript
+    make npm
 
 Then to build, run:
 
     make
 
-Site will be installed into `install/`.
+Site will be installed into `install/`. Open `install/index.html` in a web browser.
 
 To test:
 
