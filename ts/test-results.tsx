@@ -588,6 +588,65 @@ let PrFilterDisplay = React.createClass({
 	}
 })
 
+// Component for grid of lane names and checkboxes in the builds-plus display
+let LaneCheckboxDisplay = React.createClass({
+	render: function() {
+		if (laneVisible) { // "If the array of lane-visibility checkboxes exists..."
+			let laneCheckboxes : JSX.Element[] = []
+			let laneButtons : JSX.Element[] = []
+
+			// Create an "on/off" button for an entire group of lane checkboxes.
+			// Arguments are the name of the group and a function to determine if a lane should be included in the group.
+			function pushLaneButtons(label:string, filter:(lane:Lane<Build>)=>boolean) {
+				function makeHandler(sign:boolean) {
+					return () => {
+						let anythingChanged = false
+						for (let idx in lanes) {
+							let lane = lanes[idx]
+							if (filter(lane)) {
+								laneVisible[idx].set(sign ? Visibility.Show : Visibility.Hide)
+								anythingChanged = true
+							}
+						}
+						if (anythingChanged)
+							invalidateUi()
+					}
+				}
+				laneButtons.push(<span key={label+"Label"}>{
+					laneButtons.length == 0 ? " " : " | "
+				}<b>{label}</b> </span>)
+				laneButtons.push(<Clickable key={label+"On"} label="On" handler={makeHandler(true)}/>)
+				laneButtons.push(<span key={label+"Spacer2"}>, </span>)
+				laneButtons.push(<Clickable key={label+"Off"} label="Off" handler={makeHandler(false)}/>)
+			}
+
+			// Make list of lane "groups"
+			pushLaneButtons("All",      (lane)=>true)
+			pushLaneButtons("Standard", (lane)=>lane.isCore)
+			pushLaneButtons("Windows",  (lane)=>lane.name.indexOf("Windows") >= 0)
+			pushLaneButtons("Coop",     (lane)=>lane.name.indexOf("Coop") >= 0)
+			// pushLaneButtons("Hybrid",   (lane)=>lane.name.indexOf("HybridAOT") >= 0) // TODO
+			pushLaneButtons("AOT",      (lane)=>lane.name.indexOf("FullAOT") >= 0)
+
+			// Iterate over lanes and make list of checkboxes
+			for (let idx in lanes) {
+				let lane = lanes[idx]
+				if (lane.isPr && prVisible.value == Visibility.Hide)
+					continue
+				let value = laneVisible[idx]
+				laneCheckboxes.push(<span className="checkboxContainer" key={idx}>
+					<CheckboxVisibility enum={Visibility} data={value} value={value.value}
+						on={Visibility.Show} off={Visibility.Hide}
+						label={lane.name} /> {" "}
+				</span>)
+			}
+
+			return <div><br /><div>Lane filters:<span className="laneFilterButtons">{laneButtons}</span></div><div className="checkboxGrid">{laneCheckboxes}</div></div>
+		}
+		return null
+	}
+})
+
 // This error appears if an entire lane turned out to be inaccessible
 let LaneErrorBox = React.createClass({
 	render: function() {
@@ -1299,56 +1358,6 @@ registerRender( () => {
 		  </span>
 		: null
 
-	// Special UI with lane names and checkboxes in the builds-plus display
-	// FIXME: This is a bit heaviweight and should be moved to a component.
-	let laneCheckboxDisplay = null
-	if (laneVisible) { // "If the array of lane-visibility checkboxes exists..."
-		let laneCheckboxes : JSX.Element[] = []
-		let laneButtons : JSX.Element[] = []
-
-		function pushLaneButtons(label:string, filter:(lane:Lane<Build>)=>boolean) {
-			function makeHandler(sign:boolean) {
-				return () => {
-					let anythingChanged = false
-					for (let idx in lanes) {
-						let lane = lanes[idx]
-						if (filter(lane)) {
-							laneVisible[idx].set(sign ? Visibility.Show : Visibility.Hide)
-							anythingChanged = true
-						}
-					}
-					if (anythingChanged)
-						invalidateUi()
-				}
-			}
-			laneButtons.push(<span key={label+"Label"}>{
-				laneButtons.length == 0 ? " " : " | "
-			}<b>{label}</b> </span>)
-			laneButtons.push(<Clickable key={label+"On"} label="On" handler={makeHandler(true)}/>)
-			laneButtons.push(<span key={label+"Spacer2"}>, </span>)
-			laneButtons.push(<Clickable key={label+"Off"} label="Off" handler={makeHandler(false)}/>)
-		}
-		pushLaneButtons("All",      (lane)=>true)
-		pushLaneButtons("Standard", (lane)=>lane.isCore)
-		pushLaneButtons("Windows",  (lane)=>lane.name.indexOf("Windows") >= 0)
-		pushLaneButtons("Coop",     (lane)=>lane.name.indexOf("Coop") >= 0)
-		// pushLaneButtons("Hybrid",   (lane)=>lane.name.indexOf("HybridAOT") >= 0) // TODO
-		pushLaneButtons("AOT",      (lane)=>lane.name.indexOf("FullAOT") >= 0)
-
-		for (let idx in lanes) {
-			let lane = lanes[idx]
-			if (lane.isPr && prVisible.value == Visibility.Hide)
-				continue
-			let value = laneVisible[idx]
-			laneCheckboxes.push(<span className="checkboxContainer" key={idx}>
-				<CheckboxVisibility enum={Visibility} data={value} value={value.value}
-					on={Visibility.Show} off={Visibility.Hide}
-					label={lane.name} /> {" "}
-			</span>)
-		}
-		laneCheckboxDisplay = <div><br /><div>Lane filters:<span className="laneFilterButtons">{laneButtons}</span></div><div className="checkboxGrid">{laneCheckboxes}</div></div>
-	}
-
 	ReactDOM.render(<div>
 		<TitleBar />
 		<br />
@@ -1364,7 +1373,7 @@ registerRender( () => {
 			{inProgressChoice}
 			<TestFilterDisplay testFilter={currentTestFilter()} />
 			<PrFilterDisplay />
-			{laneCheckboxDisplay}
+			<LaneCheckboxDisplay />
 		</div>
 		<LoadingBox />
 		<LaneErrorBox />
