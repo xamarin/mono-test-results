@@ -106,11 +106,10 @@ let massFailures = [
 
 // Some failure steps have different labels from lane to lane. This collapses
 // known-identical steps into a single string-matchable name.
-// This might not be the best way to do this.
-// FIXME: NO MATTER WHAT, CHANGE THIS ONCE BTLS BECOMES THE DEFAULT ON LINUX
+// This is not currently needed. At one time, "make -w -C mcs/class/System run-test"
+// was mapped to "bash -c export MONO_TLS_PROVIDER=legacy && make -w -C mcs/class/System run-test"
+// to make the Linux test match the OS X one.
 let failureStepRemap = emptyObject()
-failureStepRemap["make -w -C mcs/class/System run-test"] =
-	"bash -c export MONO_TLS_PROVIDER=legacy && make -w -C mcs/class/System run-test"
 
 // Extend BuildStandard with babysitter log / failure processing
 class Build extends BuildStandard {

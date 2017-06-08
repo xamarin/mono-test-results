@@ -73,6 +73,7 @@ class Ref<T> {
 }
 
 // Dictionary helpers
+// TODO: Now that ES6 is widely adopted maybe we could replace this object stuff with map<>
 
 function getOrDefault<V>(dict: {[key:string]:V}, key:string, build: () => V) {
 	let result = dict[key]
