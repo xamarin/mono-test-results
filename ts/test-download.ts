@@ -14,6 +14,7 @@ const cachePrefix = "cache!"
 const localStorageVersion = "1"
 const localStorageCompressMode = "LZString"
 
+// May be overloaded in HTML file
 declare var overloadMaxBuildQueries : number
 const maxBuildQueries = typeof overloadMaxBuildQueries !== 'undefined' ? overloadMaxBuildQueries : defaultMaxBuildQueries
 declare var overloadAllowPR : boolean
@@ -43,9 +44,10 @@ if (localStorageGetItem("version") != localStorageVersion) {
 	localStorageSetItem("compressMode", localStorageCompressMode)
 }
 
-// The cache consists of: for each cache tag (build id+lane key) there is a series of cache items, one of which is always a "timestamp".
-// The deletion queue is a timestamp-sorted heap of build tags.
-// The deletion index is a lookup table for mapping cache tags to the subkeys for that tag's cache items.
+// The cache consists of:
+// For each build tag (build id+lane key) there is a series of cache items, one of which is always a "timestamp".
+// The deletion queue is a timestamp-sorted heap of build tags (so that)
+// The deletion index is a lookup table for mapping build tags to the subkeys for that tag's cache items (so they can be quickly found and deleted).
 // TODO: If we could switch to IndexedDB, some of this could be done with built-in capabilities.
 
 class DeletionQueueItem {
@@ -70,12 +72,14 @@ function deletionQueueRegister(date:number, buildTag:string) {
 
 let deletionIndex : { [buildTag:string] : string[] } = emptyObject()
 
+// Add a subkey to the deletion index
 function deletionIndexAdd(buildTag:string, kind:string) {
 	if (!(buildTag in deletionIndex))
 		deletionIndex[buildTag] = []
 	deletionIndex[buildTag].push( kind )
 }
 
+// Target a build tag in the deletion index and delete it from localStorage
 function deletionIndexClear(buildTag:string) {
 	let kinds = deletionIndex[buildTag]
 	if (kinds) {
@@ -86,7 +90,8 @@ function deletionIndexClear(buildTag:string) {
 	}
 }
 
-// Given a target size and a timestamp, delete items older than that timestamp until that target size is reached.
+// Given a target localStorage usage size and a timestamp, delete items
+// older than that timestamp until the target size is reached.
 // Delete entire build tags (with all their subkeys) at a time.
 function localStorageWhittle(downTo: number, date: number) {
 	while (localStorageUsage() > downTo) {
@@ -113,7 +118,7 @@ function localStorageWhittle(downTo: number, date: number) {
 	return true
 }
 
-// Build deletion queue from initial cache contents
+// Build initial deletion queue from initial cache contents
 // TODO: Also load these items as lanes
 {
 	let parseCacheItem = new RegExp("^" + localStoragePrefix + cachePrefix + "(\\d+![^!]+)!([^!]+)$")
@@ -134,22 +139,29 @@ function localStorageWhittle(downTo: number, date: number) {
 
 // Lanes list
 
+// Construct URLs given data from lane specs
+
+// Get common prefix for human-readable lane data, builds in that lane, and API queries for that lane
 function jenkinsBaseUrl(lane:string) {
 	return "https://jenkins.mono-project.com/job/" + lane
 }
 
+// Get API query URL for lane metadata
 function jenkinsLaneUrl(lane:string) {
 	return jenkinsBaseUrl(lane) + "/api/json"
 }
 
+// Get common prefix for human-readable and API data versions of one build
 function jenkinsBuildBaseUrl(lane:string, id:string) {
 	return jenkinsBaseUrl(lane) + "/" + id
 }
 
+// Get API query URL for build metadata (useful keys only)
 function jenkinsBuildUrl(lane:string, id:string) {
 	return jenkinsBuildBaseUrl(lane, id) + "/api/json?tree=actions[individualBlobs[*],parameters[*],lastBuiltRevision[*],remoteUrls[*]],timestamp,building,result"
 }
 
+// Lanes which are visible in "Build Logs" page
 let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 	["Mac Intel64",     "test-mono-mainline/label=osx-amd64",               "test-mono-pull-request-amd64-osx"],
 	["Mac Intel32",     "test-mono-mainline/label=osx-i386",                "test-mono-pull-request-i386-osx"],
@@ -160,7 +172,8 @@ let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 	["Linux ARM32-el",  "test-mono-mainline-linux/label=debian-8-armel",    "test-mono-pull-request-armel"]
 ]
 
-// Windows builds do not currently run babysitter script
+// Lanes which are visible in "Build Logs (Special Configurations)" and status pages
+// Notes:
 // All builds in this list EXCEPT Windows are nightly, not per-commit
 // The "Coop" lanes are partial checked builds (no metadata check)
 let jenkinsLaneSpecsPlus = [
@@ -179,6 +192,7 @@ let jenkinsLaneSpecsPlus = [
 	["Linux Intel64 Bitcode",    "test-mono-mainline-bitcode/label=ubuntu-1404-amd64"]
 ]
 
+// Lanes visible in "Build Logs (Special Configurations)" but omitted from status page
 let jenkinsLaneSpecsPlusValgrind = [
 	["Linux Intel64 Bitcode Valgrind", "test-mono-mainline-bitcode-valgrind/label=ubuntu-1404-amd64"]
 ]
@@ -189,7 +203,7 @@ let gitRepo = {
 	"https://github.com/mono/mono": true
 }
 
-// `remoteUrls` contains a list of URLs, which in some lanes includes no-longer used historical URLs.
+// `remoteUrls` in the JSON contains a list of URLs, which in some lanes includes no-longer used historical URLs.
 // We assume that if the main mono repo is in this list, this build is at least a BRANCH of mono and therefore good enough.
 function gitRepoMatches(json:any) {
 	for (let url of json) {
@@ -201,6 +215,7 @@ function gitRepoMatches(json:any) {
 
 // Download support
 
+// Status of a single network resource we are trying to access
 class Status {
 	loaded: boolean
 	failed: boolean // If failed is true loaded should also be true
@@ -212,8 +227,8 @@ class Status {
 // Subclasses receive server data as parsed JSON and decide what to do with it.
 class BuildBase {
 	id: string               // Build number
-	metadataStatus: Status
-	babysitterStatus: Status
+	metadataStatus: Status   // Network status for Jenkins metadata access
+	babysitterStatus: Status // Network status for babysitter log access
 	displayUrl: string       // Link to human-readable info page for build
 	complete: boolean        // If false, build is ongoing
 
@@ -246,11 +261,7 @@ interface BuildClass<B extends BuildBase> {
 }
 
 // Represents a lane (a Jenkins "job") and its builds
-// Takes a custom Build class
-// TODO:
-// - Fetch jobs list from Lane url
-// - Fetch URL like https://jenkins.mono-project.com/job/test-mono-mainline/label=debian-amd64/3063/artifact/babysitter_report.json_lines
-//   from job number
+// Takes a custom Build class as template argument
 class Lane<B extends BuildBase> {
 	idx: number        // Index in lanes array
 	name: string       // Human-readable
@@ -259,11 +270,11 @@ class Lane<B extends BuildBase> {
 	apiUrl: string     // Link to url JSON was loaded from
 	isPr: boolean
 	isCore:boolean     // This lane is tested on every commit
-	status: Status
+	status: Status     // Network status for Jenkins information about lane
 	everLoaded: boolean
-	buildMap: { [key:string] : B }
+	buildMap: { [key:string] : B } // Map build IDs to build objects
 	buildsRemaining: number // Count of builds not yet finished loading
-	buildConstructor: BuildClass<B>
+	buildConstructor: BuildClass<B> // Class object to use when instantiating a new build
 
 	constructor(idx:number, buildConstructor: BuildClass<B>, name:string, laneName:string, isPr:boolean, isCore:boolean) {
 		this.idx = idx
@@ -284,25 +295,37 @@ class Lane<B extends BuildBase> {
 
 	visible() { return this.status.loaded || this.everLoaded }
 
+	// Call to download build list for lane and then download all build data not already downloaded
 	load() {
 		if (hashHas('debug')) console.log("lane loading url", this.apiUrl)
+
+		// First network-fetch Jenkins data for the lane
 		$.get(this.apiUrl, laneResult => {
 			this.status.loaded = true
 			this.everLoaded = true
 			if (hashHas('debug')) console.log("lane loaded url", this.apiUrl, "result:", laneResult)
 			let queries = 0
 
+			// Fetch up to an arbitrary number of builds chosen to be "probably about a week's worth of data"
+			// TODO: See if we can figure out a way to fetch a specific time range rather than just "some builds"?
 			this.buildsRemaining = Math.min(laneResult.builds.length, maxBuildQueries)
+
+			// For each build in the Jenkins JSON
 			for (let buildInfo of laneResult.builds) {
 				let buildId = String(buildInfo.number)
-				let timestamp:number = null // FIXME: This stores shared state for closures below. This is confusing and brittle.
+				let timestamp:number = null // FIXME: This variable stores shared mutable state for closures below. This is confusing and brittle.
 
+				// This build is already in memory (apparently the reload button was hit). Processing done
 				if (this.buildMap[buildId] && this.buildMap[buildId].complete) {
 					this.buildsRemaining--
+
+				// This build is new and its data needs to be downloaded.
 				} else {
 					let buildTag = buildId + "!" + this.tag
 					let build = new this.buildConstructor(this.tag, buildId)
 
+					// FetchData is an inner helper function that acquires a network resource and calls a callback with results.
+					// It first queries the localStorage cache to see if the network resource is known. If not, it hits network.
 					let fetchData = (tag:string,    // Tag for cache
 									 url:string,    // URL to load
 									 status:Status, // Status variable to effect
@@ -311,10 +334,10 @@ class Lane<B extends BuildBase> {
 									                                       // (Note: Failure recovery is no longer used,
 									                                       //        it was originally for checking alternate URLs)
 									) => {
-						let storageKey = cachePrefix + buildTag + "!" + tag
+						let storageKey = cachePrefix + buildTag + "!" + tag // Key used in localStorage for this resource
 						let storageValue = localStorageGetItem(storageKey)
 
-						if (storageValue) {
+						if (storageValue) { // This was downloaded already and cached in localstorage
 							status.loaded = true
 							success(LZString.decompress(storageValue)) // Ignore result, value already stored
 							invalidateUi()
@@ -323,20 +346,24 @@ class Lane<B extends BuildBase> {
 
 						if (hashHas('debug')) console.log("build", build.id, "for lane", this.name, "loading", tag, "url", url)
 
-						// Notice this fetches *text*
+						// Network-fetch resource (Notice: Fetches *text*, not JSON)
 						$.get(url, fetchResult => {
 							if (hashHas('debug')) console.log("build loaded url", url, "result length:", fetchResult.length)
 
 							let mayStore = false
 							status.loaded = true
 							try {
+								// Data successfully loaded! Inform callback.
+								// Callback decides whether data is "good enough" to store in localStorage cache
 								mayStore = success(fetchResult)
 							} catch (e) {
 								console.warn("Failed to interpret result of url:", url, "exception:", e)
 								status.failed = true
 							}
 
-							invalidateUi()
+							invalidateUi() // Assume successfully loading a network resource changes the UI
+
+							// If downloaded data is deemed sensible enough to store in the cache, do so
 							if (!status.failed && mayStore && timestamp != null) {
 								let compressed = LZString.compress(fetchResult)
 
@@ -344,12 +371,14 @@ class Lane<B extends BuildBase> {
 								let spaceAvailable = localStorageWhittle(maxCacheSize - compressed.length, timestamp)
 
 								// Write into local storage
-								if (spaceAvailable) // FIXME: Even if we choose not to write data, the timestamp is still saved
+								if (spaceAvailable)
 									localStorageSetItem(storageKey, compressed)
 							}
 						}, "text").fail((xhr) => {
 							console.warn("Failed to load url for lane", url, "error", xhr.status);
 
+							// Inform callback of failure, let it decide whether to suppress error
+							// FIXME: Remove this feature? It's not currently used
 							if (failure(xhr.status)) {
 								status.loaded = true
 								status.failed = true
@@ -358,7 +387,7 @@ class Lane<B extends BuildBase> {
 						})
 					}
 
-					// Fetch metadata
+					// Fetch Jenkins build metadata
 					fetchData("metadata", jenkinsBuildUrl(this.tag, build.id), build.metadataStatus,
 						(result:string) => {
 							let json = JSON.parse(result)
@@ -407,9 +436,11 @@ class Lane<B extends BuildBase> {
 
 							}
 
-							return build.complete
+							return build.complete // Only cache this result if the build is finished (ie data won't change in future)
 						},
 
+						// Couldn't load metadata, so perform deferred storage of build object and bail
+						// FIXME: Should buildsRemaining be decremented here?
 						(status) => {
 							this.buildMap[buildId] = build
 							return true
@@ -432,10 +463,12 @@ class Lane<B extends BuildBase> {
 	}
 }
 
+// This is the "entry point" to the file; call with a custom BuildBase subclass to create and start downloading a lanes table.
 function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 	// Construct lanes
 	let lanes: Lane<B>[] = []
 
+	// Helper: Load contents of a "specs" table such as is seen at the top of this file
 	function make(specs:string[][], allCore:boolean) {
 		for (let spec of specs) {
 			let name = spec[0]
@@ -458,6 +491,7 @@ function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 		}
 	}
 
+	// Which specs to load are determined by overloads set in HTML file
 	if (haveOverloadLaneContents) {
 		make(overloadLaneContents, false)
 	} else {
@@ -473,14 +507,14 @@ function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 	return lanes
 }
 
-// Minimal build implementation
+// Build subclass which processes the Jenkins metadata (since this is used by both -status.tsx
+// and -results.tsx) But not the babysitter data (-results.tsx has its own subclass for that)
 class BuildStandard extends BuildBase {
 	date: Date
 	result: string
 	building: boolean
 	gitHash: string
-	gitHashSubstituteId: string
-	pr: string
+	pr: string        // ID number
 	prUrl: string
 	prTitle: string
 	prAuthor: string

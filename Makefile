@@ -21,13 +21,15 @@ all: install/index.html install/style.css install/builds.html install/builds-plu
 	 install/js/react-dom.js install/js/react.js install/js/jquery.js \
 	 install/js/lz.js install/js/priorityqueue.js
 
-# Fake out old `tsd` typings manager. TODO: Use packages.json with explicit versioning
+# Download and install TypeScript typings. TODO: Use packages.json with explicit versioning or "lockfile"
 npm:
 	npm i @types/react-dom @types/react @types/jquery
 
+# Copy all static files
 install/index.html install/style.css install/builds.html install/builds-plus.html: static/index.html static/style.css static/builds.html static/builds-plus.html
 	rsync -urhi --exclude=.DS_Store static/ install/
 
+# Download required libraries from CDN URLs.
 install/js/react.js:
 	mkdir -p install/js
 	curl -L $(REACT_URL) > $@
@@ -48,6 +50,7 @@ install/js/priorityqueue.js:
 	mkdir -p install/js
 	curl -L $(PQ_URL) > $@
 
+# Compile TypeScript
 install/js/test-results.js install/js/test-status.js install/js/test-download.js install/js/helper.js install/js/helper-react.js install/js/breakout.js: ts/tsconfig.json ts/test-results.tsx ts/test-status.tsx ts/test-download.ts ts/helper.ts ts/helper-react.tsx ts/breakout.ts
 	mkdir -p install/js
 	tsc -p ts

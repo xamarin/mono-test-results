@@ -1,5 +1,9 @@
 /// <reference path="helper.ts" />
+// Generic utility classes and functions-- React-dependent materials only
 
+// Components: General display helpers
+
+// Image with the "icon" CSS class
 class IconProps {
 	src: string
 }
@@ -10,6 +14,7 @@ class Icon extends React.Component<IconProps, {}> {
 	}
 }
 
+// <a href> hardcoded to pop out in new frame
 class AProps {
 	href: string
 	title: string
@@ -23,6 +28,7 @@ class A extends React.Component<AProps,{}> {
 	}
 }
 
+// Link with a mouse handler callback
 class ClickableProps {
 	handler: React.EventHandler<React.MouseEvent<any>>
 	key: string
@@ -39,6 +45,7 @@ class Clickable extends React.Component<ClickableProps, {}> {
 	}
 }
 
+// Same as Clickable, but visible contents are child nodes instead of a property
 class ClickableSpanProps {
 	handler: React.EventHandler<React.MouseEvent<any>>
 	key: string
@@ -79,11 +86,8 @@ function hashToDict(hash:string) : StringDict {
 	return options
 }
 
-function enumFilter(value:any, _enum:any) {
-	return (_enum ? _enum[value] : value)
-}
-
-// Use to pass an argument into a function "by reference"
+// Can be used with functions that understand Ref<T>, but loads its default value
+// from the URL hash and likewise stores any set() value back to the URL hash.
 class HashRef<T> extends Ref<T> {
 	hashKey:string
 	enum: any
@@ -122,6 +126,8 @@ function hashValue(key:string) {
 
 let needHashPush:boolean = false
 
+// One or more HashRef objects has changed, and the URL hash must be updated.
+// Lazily do this as an asynchronous callback so HashRef updates will batch together.
 function tryHashPush() {
 	if (!needHashPush)
 		return
@@ -142,6 +148,7 @@ function triggerHashPush() {
 	setTimeout(tryHashPush, 0)
 }
 
+// The URL hash has changed, and the changes need to be copied back into the HashRef objects.
 function hashchange() {
 	hashOptions = hashToDict( location.hash ? location.hash : '' )
 
@@ -167,15 +174,19 @@ function hashchange() {
 $(window).on('hashchange', hashchange)
 hashchange()
 
-/* FIXME: I'm not sure why "value" had to be passed in explicitly; it ought to
+// Components: "UI elements"
+
+/* FIXME: I'm not sure why "value" has to be passed in explicitly; it ought to
  * be derivable from data, but when I tried that I didn't get rerenders. Maybe
  * I am not using React correctly here. --Andi */
 class ChoiceProps<Key> {
 	enum: any
 	data: Ref<Key>
-	value: Key
+	value: Key     // Pass in the current value of data.value when making props object
 }
 
+// A "radio button" style selector where the options are an Enum.
+// Current selected value is stored in a Ref<T>.
 class Choice<Key> extends React.Component<ChoiceProps<Key>, {}> {
 	constructor(props: ChoiceProps<Key>) {
 		super(props)
@@ -230,6 +241,7 @@ class CheckboxProps<Key> extends ChoiceProps<Key> {
 	label:string
 }
 
+// A checkbox which draws its values from an enum and stores its result in a Ref<T>.
 class Checkbox<Key> extends React.Component<CheckboxProps<Key>, {}> {
 	constructor(props) {
 		super(props)
@@ -294,6 +306,7 @@ function formatRangeLaterWithLabel(range: DateRange, label:string) {
 }
 
 // Components: Top title bar
+// The set of html files in static/ is known and hardcoded here
 
 let titleBarSpec = [
 	["index.html", "Quick status"],
@@ -331,7 +344,7 @@ class TitleBar extends React.Component<{}, {}> {
 }
 
 
-// Components: 
+// Components: Loading/reload controls for a set of lanes
 
 let loadingIcon = <span><Icon src="images/loading.gif" /> Loading...</span>
 
@@ -367,7 +380,8 @@ function makeReloadControl<T extends BuildBase>(lanes: Lane<T>[], currentlyLoadi
 	return ReloadControl
 }
 
-// Display refresh
+// Display refresh. To use, call registerRender(callback) at the start of the
+// application, and invalidateUi whenever data relevant to display changes.
 
 let needRender = false
 let renderCallback: ()=>void = null

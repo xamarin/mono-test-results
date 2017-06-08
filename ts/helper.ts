@@ -1,3 +1,5 @@
+// Generic utility classes and functions
+
 // String ops
 
 function startsWith(str:string, search:string) {
@@ -37,17 +39,33 @@ function toNumber(str: string) {
 	return n
 }
 
+// Given a ".jsonlines" file (IE: A series of JSON values separated by newlines),
+// returns an array of parsed Javascript objects.
+function jsonLines(str:String) : any[] {
+	return str.split("\n").filter(line =>
+		/\S/.test(line)
+	).map(line =>
+		JSON.parse(line)
+	)
+}
+
 // Typescript ops
 
 interface StringDict  { [key:string]:string }
 interface BooleanDict { [key:string]:boolean }
 
+// Given an enum "class object", return all string keys
 function enumStringKeys(e) {
 	return Object.keys(e).filter(key => typeof e[key] === "number")
 }
 
+// Map a key to its value in an enum, or to itself if enum not provided.
+function enumFilter(value:any, _enum:any) {
+	return (_enum ? _enum[value] : value)
+}
+
 // Use to pass an argument into a function "by reference"
-// Use set() to change value because subclasses trigger effects on change
+// Use set() to change value because subclasses may trigger effects on change
 class Ref<T> {
 	constructor(public value: T) {}
 	set(value: T) { this.value = value }
@@ -65,7 +83,8 @@ function getOrDefault<V>(dict: {[key:string]:V}, key:string, build: () => V) {
 	return result
 }
 
-// Duplicate because of weird edge case in Typescript type rules
+// getOrDefault but typed for an array rather than an object
+// Duplicated because of weird edge case in Typescript type rules
 function getIdxOrDefault<V>(dict: {[idx:number]:V}, key:number, build: () => V) {
 	let result = dict[key]
 	if (!result) {
@@ -130,6 +149,18 @@ class DateRange {
 	}
 }
 
+// An object representing information that can occur over a range of dates. To be subclassed.
+class Listing {
+	dateRange: DateRange
+
+	constructor() {
+		this.dateRange = new DateRange()
+	}
+}
+
+// Given an array of Listing objects, create a sorter function
+// for an array of indices into this same array, given the sort order
+// should sort by increasing "later" range date.
 function dateRangeLaterCmpFor(buildListings) {
 	function dateRangeLaterCmp(a:string,b:string) { // Sort by date
 		let ad = buildListings[a].dateRange.late
@@ -139,15 +170,9 @@ function dateRangeLaterCmpFor(buildListings) {
 	return dateRangeLaterCmp
 }
 
-class Listing {
-	dateRange: DateRange
-
-	constructor() {
-		this.dateRange = new DateRange()
-	}
-}
-
-// Local storage wrappers: enforce key prefix, keep track of data-in-use
+// Local storage wrappers. Used instead of the builtin functions for two reasons:
+// 1. These functions enforce a prefix on the key, since we will be on shared hosting.
+// 2. These functions explicitly keep track of data-in-use, so we can avoid hitting the cap.
 
 const localStoragePrefix = "testresults!"
 
@@ -172,18 +197,11 @@ function localStorageGetItem(key:string) {
 	return localStorage.getItem(localStoragePrefix + key)
 }
 
+// Amount of localStorage being used, in UTF16 characters.
 function localStorageUsage() {
 	let usageKey = localStoragePrefix + "usage"
 	let usage = localStorage.getItem(usageKey)
 	return toNumber(usage) + (usage != null ? usageKey.length + usage.length : 0)
-}
-
-function jsonLines(str:String) : any[] {
-	return str.split("\n").filter(line =>
-		/\S/.test(line)
-	).map(line =>
-		JSON.parse(line)
-	)
 }
 
 // Delete anything from local storage whose key begins with our prefix plus an additional prefix

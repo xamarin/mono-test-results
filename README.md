@@ -17,6 +17,10 @@ To test:
 
 * Adding `#!debug` to the URL will run in a debug mode which prints verbose information to the js console.
 
+# Project structure
+
+The project consists of a set of TypeScript files in `ts/` and a set of html and resource files in `static/`. There is a Makefile which compiles the TypeScript into JavaScript and copies this, plus the static files, into the `install/` directory. The HTML files contain JavaScript snippets which configure each individual page by setting constants before the JavaScript files are loaded.
+
 # Licensing
 
 The icons currently being used are from [https://www.iconfinder.com/iconsets/32x32-free-design-icons] and under that license if we post this publicly we have to include a link to [http://www.aha-soft.com/].

@@ -1,15 +1,22 @@
 /// <reference path="./test-download.ts" />
 /// <reference path="./helper-react.tsx" />
 
-const before_collapse_standard = 5
-const before_collapse_pr = 8
+/*
+ * This file is responsible for taking data from test-download.ts
+ * and unpacking and formatting it appropriate for full test result display.
+ */
 
 // Constants
 
+// How many failures should be shown in a group before the "[N more]" link appears?
+const before_collapse_standard = 5
+const before_collapse_pr = 8
+
+// May be overloaded in HTML file
 declare var overloadShowLaneCheckboxes : number
 const showLaneCheckboxes = typeof overloadShowLaneCheckboxes !== 'undefined' ? overloadShowLaneCheckboxes : false
 
-// Load
+// --- Download and unpack data ---
 
 enum FailureKind {
     Unknown,
@@ -38,6 +45,7 @@ function failureDescribe(kind: FailureKind) {
 // We need to normalize step strings by removing it.
 let ciPrSanitizer = /\s+CI_PR=\d*$/
 
+// A single failure which occurred for a single test on a single build.
 class Failure {
 	step: string
 	test: string
@@ -61,6 +69,7 @@ class Failure {
 	}
 }
 
+// Support classes for massFailures array
 class MassFailure {
 	constructor(public limit: number, public exampleFailure:Failure) {}
 }
@@ -103,9 +112,12 @@ let failureStepRemap = emptyObject()
 failureStepRemap["make -w -C mcs/class/System run-test"] =
 	"bash -c export MONO_TLS_PROVIDER=legacy && make -w -C mcs/class/System run-test"
 
-// Load
+// Extend BuildStandard with babysitter log / failure processing
 class Build extends BuildStandard {
 	failures: Failure[]
+
+	// For each member of massFailures, track whether this build has seen enough
+	// of that kind of mass failure to indicate the whole build should be scrubbed
 	massFailureTrackers: MassFailureTracker[]
 
 	constructor(laneTag: string, id: string) {
@@ -151,7 +163,7 @@ class Build extends BuildStandard {
 				}
 				if (!resolved) {
 					let failure = new Failure(invocation)
-					if (json.final_code == "124")
+					if (json.final_code == "124") // See GNU timeout manpage
 						failure.kind = FailureKind.Hang
 					else if (buildFailure(failure))
 						failure.kind = FailureKind.Build
@@ -166,9 +178,12 @@ class Build extends BuildStandard {
 	}
 }
 
+// All data is stored in this table
 let lanes = makeLanes(Build)
 
-// Display state
+// --- Display data ---
+
+// Different display modes
 
 enum GroupBy {
 	Lanes,
@@ -212,12 +227,13 @@ let testFilterTest = new HashRef<string>("filterTestCase", null, null)
 let prFilter = new HashRef<string>("filterPr", null, null)
 let prGithubFilter = new HashRef<string>("filterGithubUserPr", null, null)
 
-// Test filters
+// Test filters -- this class is used to manage the "show only data about
+// this test" control at the top of the screen
 
 class TestFilter {
 	constructor(public failure: Failure) {}
 
-	match(build: Build) : boolean {
+	match(build: Build) : boolean { // Should this build be shown while the filter is live?
 		for (let failure of build.failures) {
 			if (this.failure.equals(failure))
 				return true
@@ -225,7 +241,7 @@ class TestFilter {
 		return false
 	}
 
-	display() {
+	display() { // What should appear next to the [X] button?
 		if (this.failure.test)
 			return <span className="failedTestName">{this.failure.test}</span>
 		else
@@ -242,14 +258,14 @@ function currentTestFilter() {
 
 // Utility
 
-function filterLanes() {
+function filterLanes() { // Does this lane comply with the current PR visibility rule?
 	return lanes.filter( lane =>
 		(prVisible.value == Visibility.Show || !lane.isPr
 		 || groupBy.value == GroupBy.PRs)
 	)
 }
 
-function buildInTimespan(build: Build) {
+function buildInTimespan(build: Build) { // Does this build comply with DisplaySpan?
 	let cutoff: number // In days
 	switch (displaySpan.value) {
 		case DisplaySpan.AllCached:
@@ -268,7 +284,7 @@ function buildInTimespan(build: Build) {
 	return +build.date > (+now - cutoff*dayMs)
 }
 
-function currentlyLoading() {
+function currentlyLoading() { // Is *anything* currently loading?
 	for (let lane of filterLanes())
 		if (!lane.status.loaded || lane.buildsRemaining > 0)
 			return true
@@ -279,6 +295,7 @@ function currentlyLoading() {
 
 interface BuildDict { [laneIndex:number]: Build }
 
+// A Listing for a particular git commit which was built across multiple lanes
 class BuildListing extends Listing {
 	failedLanes: number
 	inProgressLanes: number
@@ -293,6 +310,7 @@ class BuildListing extends Listing {
 }
 interface BuildListingDict { [key:string] : BuildListing }
 
+// How likely is it this failure was the PR's "fault"? Lower numbers are more likely
 enum PrSuspicion {
 	Build,
 	Probably,
@@ -301,6 +319,7 @@ enum PrSuspicion {
 	NoErrors
 }
 
+// A PrFailureListing will track each failure seen within the PR with this object
 class PrFailure {
 	lanes: BuildDict
 
@@ -308,6 +327,7 @@ class PrFailure {
 		this.lanes = emptyObject()
 	}
 
+	// Suspicion level for this failure
 	suspicionCache: PrSuspicion
 	suspicion() {
 		if (this.suspicionCache == null) {
@@ -334,6 +354,7 @@ function anyBuildFrom(buildDict: BuildDict) {
 	return null
 }
 
+// A Listing for a particular git commit which was built across multiple lanes as part of a PR
 class PrBuildListing extends Listing {
 	lanes: BuildDict
 	lanesInProgress: BuildDict
@@ -348,7 +369,8 @@ class PrBuildListing extends Listing {
 		this.failureDict = emptyObject()
 	}
 
-	// Late population
+	// Return list of keys in this PR's database of failures, sorted by severity.
+	// Populate the list of sorted keys late, on first request, on assumption keys will be known by then
 	sortedKeysCache: string[]
 	sortedKeys() {
 		if (!this.sortedKeysCache)
@@ -359,6 +381,7 @@ class PrBuildListing extends Listing {
 		return this.sortedKeysCache
 	}
 
+	// Return "some build, any build" from this git commit so display logic can look up data shared between builds
 	sampleBuildCache: Build
 	sampleBuild() {
 		if (!this.sampleBuildCache) {
@@ -371,6 +394,7 @@ class PrBuildListing extends Listing {
 		return this.sampleBuildCache
 	}
 
+	// Overall suspicion level for this git commit
 	suspicionCache: PrSuspicion
 	suspicion() {
 		if (this.suspicionCache == null) {
@@ -385,6 +409,7 @@ class PrBuildListing extends Listing {
 
 interface PrBuildListingDict { [key:string] : PrBuildListing }
 
+// A Listing for a particular PR, which may have mutliple builds.
 class PrListing extends Listing {
 	builds: PrBuildListingDict
 
@@ -393,7 +418,8 @@ class PrListing extends Listing {
 		this.builds = emptyObject()
 	}
 
-	// Late population
+	// Return list of keys in this PR's database of git commits, sorted by last build time.
+	// Populate the list of sorted keys late, on first request, on assumption keys will be known by then
 	sortedKeysCache: string[]
 	sortedKeys() {
 		if (!this.sortedKeysCache)
@@ -401,6 +427,7 @@ class PrListing extends Listing {
 		return this.sortedKeysCache
 	}
 
+	// Return "some build, any build" from this git commit so display logic can look up data shared between builds
 	sampleBuildCache: Build
 	sampleBuild() {
 		if (!this.sampleBuildCache) {
@@ -416,6 +443,7 @@ class PrListing extends Listing {
 
 interface PrListingDict { [key:string] : PrListing }
 
+// Given a dictionary of build listings, remove all listings with in-progress lanes
 function filterBuildListingsForInProgress(buildListings: BuildListingDict) {
 	let filteredBuildListings: BuildListingDict = emptyObject()
 	for (let key of Object.keys(buildListings)) {
@@ -426,6 +454,7 @@ function filterBuildListingsForInProgress(buildListings: BuildListingDict) {
 	return filteredBuildListings
 }
 
+// A Listing for a test failure which may have been seen in multiple lanes and multiple builds
 class FailureListing extends Listing {
 	count: number
 	builds: { [id:string]: boolean }
@@ -442,6 +471,7 @@ interface FailureListingDict { [key:string] : FailureListing }
 
 let isMakeLine = /make (?:-j\d+ )?-w V=1/
 
+// Return true if this failure occurred during build rather than during test
 function buildFailure(failure: Failure) {
 	return failure.step && (
 		   startsWith(failure.step, "./autogen.sh")
@@ -450,7 +480,7 @@ function buildFailure(failure: Failure) {
 	)
 }
 
-// Return true if all failures are build failures
+// Return false if all failures are build failures, true otherwise
 function anyNonBuildFailures(build: Build) {
 	for(let failure of build.failures) {
 		if (!buildFailure(failure))
@@ -491,6 +521,7 @@ class FilterEntryState {
 	input: string
 }
 
+// Text box to manually enter a filter condition into in the PR pane
 class FilterEntry extends React.Component<FilterEntryProps, FilterEntryState> {
 	constructor(props: FilterEntryProps) {
 		super(props)
@@ -516,12 +547,13 @@ class FilterEntry extends React.Component<FilterEntryProps, FilterEntryState> {
 	}
 }
 
-// UI to show current filters on build/lane panes
+// Component for UI to display/dismiss a test filter
 class TestFilterDisplayProps {
 	testFilter: TestFilter
 }
 class TestFilterDisplay extends React.Component<TestFilterDisplayProps, {}> {
 	render() {
+		// This control is only visible in some view modes
 		if (!this.props.testFilter || groupBy.value == GroupBy.Failures || groupBy.value == GroupBy.PRs)
 			return null
 
@@ -533,12 +565,12 @@ class TestFilterDisplay extends React.Component<TestFilterDisplayProps, {}> {
 	}
 }
 
-// UI to show current filters on PR lane
 function clearPrFilters() {
 	prFilter.clear()
 	prGithubFilter.clear()
 }
 
+// Component for UI to show current filters on a PR lane
 let PrFilterDisplay = React.createClass({
 	render: function() {
 		if (groupBy.value != GroupBy.PRs)
@@ -557,6 +589,7 @@ let PrFilterDisplay = React.createClass({
 	}
 })
 
+// This error appears if an entire lane turned out to be inaccessible
 let LaneErrorBox = React.createClass({
 	render: function() {
 		let errors = filterLanes().filter(lane => lane.status.failed)
@@ -581,6 +614,8 @@ class FailureFilterLinkProps {
 	failure: Failure
 }
 
+// Component for a link in the Failures pane that switches to another pane and
+// enables a filter to show only data related to one failure
 class FailureFilterLink extends React.Component<FailureFilterLinkProps, {}> {
 	render() {
 		let label = "" + this.props.count + "/" + this.props.of + " " +
@@ -597,6 +632,7 @@ class FailureFilterLink extends React.Component<FailureFilterLinkProps, {}> {
 	}
 }
 
+// Shared formatting for describing a test failure
 function renderFailureBase(failure: Failure, extra:JSX.Element=null) {
 	let testLine = failure.test ? <div className="failedTestName">{failure.test}</div> : null
 	let key = failure.step + "!" + failure.test
@@ -625,6 +661,7 @@ class ExpandableState {
 	expand:boolean
 }
 
+// Base-class component for a list which cuts off at a certain number of items and displays a "show more" link
 class Expandable<Props, Item> extends React.Component<Props, ExpandableState> {
 	constructor(props: Props) {
 		super(props)
@@ -660,8 +697,11 @@ class Expandable<Props, Item> extends React.Component<Props, ExpandableState> {
 
 	// Overload these
 
+	// How many items to display before popping up "[more]" box?
 	beforeFailureCount() { return 1 }
+	// Format one item
 	itemRender(item:Item) : JSX.Element { return null }
+	// Format the "[more]" box
 	expandItemRender(failureCount:number) : JSX.Element { return null }
 }
 
@@ -714,18 +754,22 @@ class BuildFailures extends ExpandableWithFailures<BuildFailuresProps, Failure> 
 	}
 }
 
+// Shared formatting for a link to a single build on jenkins
 function linkFor(build: Build, parens=true, allowPrTitle=true) {
 	let title = build.prTitle ? build.prTitle : build.gitHash
 	let display = build.pr && allowPrTitle ? `PR ${build.pr}` :  (parens?"":"Commit ") + build.gitDisplay()
 	return <span className="sourceLink">{parens?"(":""}<A href={build.gitUrl(allowPrTitle)} title={title}>{display}</A>{parens?")":""}</span>
 }
 
+// Shared formatting for a link to the "Test Results" page for a single build on jenkins
 function linkJenkins(lane: Lane<Build>, build: Build) {
 	let title = "Test results on Jenkins"
 	let url = jenkinsBuildBaseUrl(lane.tag, build.id) + "/testReport"
 	return <span>(<A href={url} title={title}>Failures</A>)</span>
 }
 
+// Shared formatting for-- for some set of builds which occurred across multiple lanes--
+// the list of links to those builds, labeled by the relevant lane name.
 function linkLanesDiv(title:string, dict:BuildDict, linkFailures = false, bold = false) {
 	if (!dict || objectSize(dict) == 0)
 		return null
@@ -746,7 +790,7 @@ function linkLanesDiv(title:string, dict:BuildDict, linkFailures = false, bold =
 	return <div><span className={className}>{title}:</span> {links}</div>
 }
 
-// "State of the world" data shared by all failure displays
+// Data needed both to describe PRs and individual builds within a PR
 interface PrDisplayContext {
 	trials:number
 	builds:number
@@ -759,6 +803,7 @@ class PrBuildDisplayProps {
 	prDisplayContext:PrDisplayContext
 }
 
+// Component to display, for a git commit associated with a PR, the failures
 class PrBuildDisplay extends ExpandableWithFailures<PrBuildDisplayProps, string> {
 	render() {
 		let prFailuresSortedKeys = this.props.prBuildListing.sortedKeys()
@@ -775,6 +820,7 @@ class PrBuildDisplay extends ExpandableWithFailures<PrBuildDisplayProps, string>
 		let otherFailures:JSX.Element = null
 		let shouldShowOtherFailures = false
 
+		// Convert failure's "suspicion level" to human readable
 		switch (prFailure.suspicion()) {
 			case PrSuspicion.Build:
 				suspicionMessage = <span className="failedTestVerdict">Probably, this is a build failure</span>
@@ -827,6 +873,7 @@ class PrDisplayProps {
 	prDisplayContext:PrDisplayContext
 }
 
+// Component to display, for a PR, the git commits associated with it
 class PrDisplay extends Expandable<PrDisplayProps, string> {
 	render() {
 		let prBuildListings = this.props.prListing.builds
@@ -856,6 +903,7 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 		let prBuildListing = this.props.prListing.builds[prBuildKey]
 		let sampleBuild = prBuildListing.sampleBuild()
 
+		// Basic information about the commits
 		let commitTitle: JSX.Element = null
 		if (sampleBuild) {
 			commitTitle = <div>
@@ -868,7 +916,8 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 		}
 
 		let result:JSX.Element = null
-		if (objectSize(prBuildListing.failureDict) > 0) {
+		if (objectSize(prBuildListing.failureDict) > 0) { // Were there failures?
+			// Convert PR's "suspicion level" to human readable
 			let suspicionMessage: JSX.Element = null
 			switch (prBuildListing.suspicion()) {
 				case PrSuspicion.Build:
@@ -893,7 +942,7 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 				<p><b>Failures:</b></p>
 				<PrBuildDisplay prBuildKey={prBuildKey} prBuildListing={prBuildListing} prDisplayContext={this.props.prDisplayContext} />
 			</div>
-		} else {
+		} else { // No failures
 			let label:string = null
 
 			if (objectSize(prBuildListing.lanesInProgress))
@@ -906,7 +955,6 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 			</div>
 		}
 
-		// TODO: Status
 		return <li className="verbosePr" key={prBuildKey}>
 			{commitTitle}
 			{linkLanesDiv("Built on", prBuildListing.lanes)}
@@ -925,13 +973,13 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 	}
 }
 
-// Used when constructing a failureListingsDict
+// While constructing a failureListingsDict, extract the relevant test failures for a single build from a single lane
 function extractFailuresFromBuild(lane:Lane<Build>, build:Build, dateRange:DateRange, failureListings:FailureListingDict, uniqueBuilds:BooleanDict) {
 	dateRange.add(build.date)
 	uniqueBuilds[build.buildTag()] = true
 
 	for (let failure of build.failures) {
-		if (buildFailure(failure))
+		if (buildFailure(failure)) // Not a test failure
 			continue
 
 		let failureKey = failure.key()
@@ -944,22 +992,25 @@ function extractFailuresFromBuild(lane:Lane<Build>, build:Build, dateRange:DateR
 	}
 }
 
+// Component for "all data display" (ie everything but the top settings)
 let ContentArea = React.createClass({
 	render: function() {
-		let readyLanes = filterLanes().filter(
+		let readyLanes = filterLanes().filter( // All lanes which comply with current PR/lane checkbox settings
 			lane => lane.visible() &&
 				(!laneVisible || laneVisible[lane.idx].value == Visibility.Show)
 		)
-		let dateRange = new DateRange()
+		let dateRange = new DateRange() // Current range for "all data seen"
 		let testFilter = currentTestFilter()
 
 		if (readyLanes.length) {
-			// FIXME: Don't do this all in one function...
+			// Which pane are we in? // FIXME: Does this really need to be all in one function
 			switch (groupBy.value) {
 
 				// List of lanes, then builds under lanes, then failures under builds.
 				case GroupBy.Lanes: {
+					// Iterate over all lanes
 					let laneDisplay = readyLanes.map(lane => {
+						// Get a list of builds for this lane and progressively trim it down for current visibility settings
 						let builds = lane.builds()
 						let loadedBuilds = builds.filter(build => build.loaded())
 						let readyBuilds = loadedBuilds.filter(buildInTimespan)
@@ -998,6 +1049,7 @@ let ContentArea = React.createClass({
 						</div>
 					})
 
+					// Render pane
 					return <div className="verboseLaneList">
 						<p>Showing {formatRange(dateRange)}</p>
 						{laneDisplay}
@@ -1006,6 +1058,7 @@ let ContentArea = React.createClass({
 
 				// List of builds, then lanes under builds, then failures under lanes.
 				case GroupBy.Builds: {
+					// Iterate over all lanes while building a database of git commits seen within those lanes
 					let buildListings: BuildListingDict = emptyObject()
 					for (let lane of readyLanes) {
 						for (let build of lane.builds()) {
@@ -1016,6 +1069,7 @@ let ContentArea = React.createClass({
 							if (testFilter && !testFilter.match(build))
 								continue
 
+							// This build is okay to add to the database
 							let buildListing = getOrDefault(buildListings, build.buildTag(),
 									() => new BuildListing())
 
@@ -1034,32 +1088,37 @@ let ContentArea = React.createClass({
 					if (inProgressVisible.value == Visibility.Hide)
 						buildListings = filterBuildListingsForInProgress(buildListings)
 
+					// Iterate over git commits in buildListings
 					let buildDisplay = Object.keys(buildListings).sort(dateRangeLaterCmpFor(buildListings)).map(buildKey => {
-						let extra: JSX.Element = null
+						let title: JSX.Element = null
 						let buildListing = buildListings[buildKey]
+
+						// Iterate over lanes that built this git commit
 						let laneDisplay = Object.keys(buildListing.lanes).sort(numericSort).map(laneIdx => {
 							let build = buildListing.lanes[laneIdx]
 							let lane = lanes[laneIdx]
 
-							if (!extra)
-								extra = linkFor(build, false)
+							if (!title)
+								title = linkFor(build, false)
 
 							return <BuildFailures lane={lane} build={build} key={lane.idx} linkLabel={lane.name} extraLabel={null} />
 						})
 
-						if (!extra)
-							extra = <span>Unknown</span>
+						if (!title)
+							title = <span>Unknown</span>
 
 						return <div className="verboseBuild" key={buildKey}>
-							<b>{extra}</b>
+							<b>{title}</b>
 							<ul>
 								{laneDisplay}
 							</ul>
 						</div>
 					})
 
+					// Display of how many builds failed
 					let failDisplay: JSX.Element = null
 
+					// Don't show when a failure filter is on (because all builds will be failures)
 					if (!testFilter) {
 						let failCount = objectValues(buildListings)
 							.filter(buildListing => buildListing.failedLanes > 0)
@@ -1067,6 +1126,7 @@ let ContentArea = React.createClass({
 						failDisplay = <span> | <b>{failCount} of {countKeys(buildListings)}</b> builds have failures:</span>
 					}
 
+					// Render pane
 					return <div className="verboseBuildList">
 						<p>Showing {formatRange(dateRange)}{failDisplay}</p>
 						<div className="buildList">
@@ -1081,8 +1141,10 @@ let ContentArea = React.createClass({
 					let uniqueBuilds: BooleanDict = emptyObject()
 					let trials = 0
 
+					// Iterate over all lanes, and all builds within lanes, to build failureListings database
 					for (let lane of readyLanes) {
 						for (let build of lane.builds()) {
+							// Check if this build is appropriate to scan under visibility settings
 							if (build.inProgress() || !buildInTimespan(build))
 								continue
 							if (massFailVisible.value == Visibility.Hide && build.massFailed())
@@ -1092,6 +1154,8 @@ let ContentArea = React.createClass({
 							extractFailuresFromBuild(lane, build, dateRange, failureListings, uniqueBuilds)
 						}
 					}
+
+					// Iterate over all failures in failureListings, sorted by frequency
 					let failureDisplay = Object.keys(failureListings)
 						.sort( (a:string,b:string) => failureListings[b].count - failureListings[a].count )
 						.map( key => {
@@ -1115,6 +1179,7 @@ let ContentArea = React.createClass({
 							</li>
 						})
 
+					// Render pane
 					return <div>
 						<p>Showing {formatRange(dateRange)} | Out of <b>{trials}</b> runs:</p>
 						<ul className="failureList">
@@ -1125,16 +1190,18 @@ let ContentArea = React.createClass({
 
 				// List of PRs, which in practice is similar to a list of builds, but with access to extended failure info
 				case GroupBy.PRs: {
-					let failureListings: FailureListingDict = emptyObject()
+					let failureListings: FailureListingDict = emptyObject() // Failures seen in non-PR builds
 					let uniqueBuilds: BooleanDict = emptyObject()
 					let prListings: PrListingDict = emptyObject()
-					let prFailureListings: PrFailureDict
+					let prFailureListings: PrFailureDict                    // Failures seen in PR builds
 					let trials = 0
 
-					// FIXME: Some code duplication here. Can this be merged?
+					// Iterate over all lanes, and all builds within lanes, to build failureListings
+					// and prFailureListings databases.
+					// FIXME: Some code duplication here with failures pane. Can this be merged?
 					for (let lane of readyLanes) {
 						for (let build of lane.builds()) {
-							// Filter builds
+							// Check if this build is appropriate to scan under visibility settings
 							if (lane.isPr && prFilter.value) {
 								// FIXME: Should builds that took place after the PR build be filtered?
 								if (build.pr != prFilter.value)
@@ -1149,14 +1216,18 @@ let ContentArea = React.createClass({
 									continue
 							}
 
-							// Process builds
+							// We need to scan both PR builds and non-PR builds becuase PR build
+							// display checks to see if failures encountered are "common" outside PRs
 							if (lane.isPr) {
+								// Get the object for the PR being built
 								let prListing = getOrDefault(prListings, build.pr,
 									() => new PrListing())
 
+								// Get the PR built-git-hash object from out of the PR object
 								let prBuildListing = getOrDefault(prListing.builds, build.buildTag(),
 									() => new PrBuildListing())
 
+								// Update the lane statuses in the built-git-hash object, based on this build
 								if (build.inProgress())
 									prBuildListing.lanesInProgress[lane.idx] = build
 								else if (build.result == "ABORTED")
@@ -1164,6 +1235,7 @@ let ContentArea = React.createClass({
 								else
 									prBuildListing.lanes[lane.idx] = build
 
+								// Iterate over the failures in this build
 								// Note: Suspicion is not rated on this pass
 								for (let failure of build.failures) {
 									let failureKey = failure.key()
@@ -1200,6 +1272,7 @@ let ContentArea = React.createClass({
 						return <PrDisplay key={prKey} prKey={prKey} prListing={prListing} prDisplayContext={prDisplayContext} />
 					})
 
+					// Render pane
 					return <div>
 						<p>Are the failures in the PR new? Comparing builds from {formatRange(dateRange)}</p>
 						{prDisplay}
@@ -1212,6 +1285,7 @@ let ContentArea = React.createClass({
 	}
 })
 
+// Render entire page
 registerRender( () => {
 	let inProgressChoice = groupBy.value != GroupBy.Failures && groupBy.value != GroupBy.PRs
 		? <span>
@@ -1226,9 +1300,10 @@ registerRender( () => {
 		  </span>
 		: null
 
+	// Special UI with lane names and checkboxes in the builds-plus display
 	// FIXME: This is a bit heaviweight and should be moved to a component.
 	let laneCheckboxDisplay = null
-	if (laneVisible) {
+	if (laneVisible) { // "If the array of lane-visibility checkboxes exists..."
 		let laneCheckboxes : JSX.Element[] = []
 		let laneButtons : JSX.Element[] = []
 
