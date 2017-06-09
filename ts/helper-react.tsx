@@ -311,10 +311,12 @@ function formatRangeLaterWithLabel(range: DateRange, label:string) {
 let titleBarSpec = [
 	["index.html", "Quick status"],
 	["builds.html", "Build logs"],
-	["builds-plus.html", "Build logs (special configurations)"],
-	["builds-stress.html", "Build logs (stress test)"],
-	["builds-2017-02.html", "Build logs (2017-02 branch)"],
-	["builds-4.8.html", "Build logs (4.8 branch)"],
+	["builds-plus.html", "Build logs (Special configurations)"],
+	["builds-stress.html", "Build logs (Stress test)"],
+	["builds-2017-06.html", "2017-06"],
+	["builds-2017-04.html", "2017-04"],
+	["builds-2017-02.html", "2017-02"],
+	["builds-4.8.html", "4.8"],
 	// ["https://jenkins.mono-project.com/view/All/job/jenkins-testresult-viewer/", "Source"]
 ]
 
