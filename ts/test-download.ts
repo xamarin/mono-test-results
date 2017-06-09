@@ -161,7 +161,7 @@ function jenkinsBuildUrl(lane:string, id:string) {
 	return jenkinsBuildBaseUrl(lane, id) + "/api/json?tree=actions[individualBlobs[*],parameters[*],lastBuiltRevision[*],remoteUrls[*]],timestamp,building,result"
 }
 
-// Lanes which are visible in "Build Logs" page
+// Lanes which build on every commit and are visible in "Build Logs" page
 let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 	["Mac Intel64",     "test-mono-mainline/label=osx-amd64",               "test-mono-pull-request-amd64-osx"],
 	["Mac Intel32",     "test-mono-mainline/label=osx-i386",                "test-mono-pull-request-i386-osx"],
@@ -169,16 +169,15 @@ let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 	["Linux Intel32",   "test-mono-mainline-linux/label=ubuntu-1404-i386",  "test-mono-pull-request-i386"],
 	["Linux ARM64",     "test-mono-mainline-linux/label=debian-8-arm64",    "test-mono-pull-request-arm64"],
 	["Linux ARM32-hf",  "test-mono-mainline-linux/label=debian-8-armhf",    "test-mono-pull-request-armhf"],
-	["Linux ARM32-el",  "test-mono-mainline-linux/label=debian-8-armel",    "test-mono-pull-request-armel"]
+	["Linux ARM32-el",  "test-mono-mainline-linux/label=debian-8-armel",    "test-mono-pull-request-armel"],
+	["Windows Intel32", "z/label=w32",                                      "w"],
+	["Windows Intel64", "z/label=w64",                                      "x"]
 ]
 
 // Lanes which are visible in "Build Logs (Special Configurations)" and status pages
 // Notes:
-// All builds in this list EXCEPT Windows are nightly, not per-commit
 // The "Coop" lanes are partial checked builds (no metadata check)
 let jenkinsLaneSpecsPlus = [
-	["Windows Intel32",          "z/label=w32", "w"],
-	["Windows Intel64",          "z/label=w64", "x"],
 	["Linux Intel64 MCS",        "test-mono-mainline-mcs/label=ubuntu-1404-amd64",     "test-mono-pull-request-amd64-mcs"],
 	["Linux Intel64 Checked",    "test-mono-mainline-checked/label=ubuntu-1404-amd64"],
 	["Linux Intel32 Coop",       "test-mono-mainline-coop/label=ubuntu-1404-i386"],
@@ -469,12 +468,9 @@ function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 	let lanes: Lane<B>[] = []
 
 	// Helper: Load contents of a "specs" table such as is seen at the top of this file
-	function make(specs:string[][], allCore:boolean) {
+	function make(specs:string[][], isCore:boolean) {
 		for (let spec of specs) {
 			let name = spec[0]
-			// "Core" builds currently consist of anything in jenkinsLaneSpecs, plus Windows builds
-			// TODO: Add || endsWith(name, "MCS")
-			let isCore = allCore || startsWith(name, "Windows")
 
 			// Spec is a triplet of name, normal URL tag, PR URL tag
 			let columns = allowPr ? 2 : 1 // Look at PR URL tag column?
