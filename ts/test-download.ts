@@ -222,9 +222,29 @@ let jenkinsLaneSpecsPlus = [
 	["Linux Intel64 Bitcode",    "test-mono-mainline-bitcode/label=ubuntu-1404-amd64"]
 ]
 
+
+let jenkinsLaneDetailsPlus = [
+	{name: "Linux Intel64 MCS",        val: [["test-mono-mainline-mcs", "ubuntu-1404-amd64",     "test-mono-pull-request-amd64-mcs"]]},
+	{name: "Linux Intel64 Checked",    val: [["test-mono-mainline-checked", "ubuntu-1404-amd64"]]},
+	{name: "Linux Intel32 Coop",       val: [["test-mono-mainline-coop", "ubuntu-1404-i386"]]},
+	{name: "Linux Intel64 Coop",       val: [["test-mono-mainline-coop", "ubuntu-1404-amd64"]]},
+	{name: "Linux Intel32 FullAOT",    val: [["test-mono-mainline-fullaot", "ubuntu-1404-i386"]]},
+	{name: "Linux Intel64 FullAOT",    val: [["test-mono-mainline-fullaot", "ubuntu-1404-amd64", "test-mono-pull-request-amd64-fullaot"]]},
+	{name: "Linux ARM64 FullAOT",      val: [["test-mono-mainline-fullaot", "debian-8-arm64"]]},
+	{name: "Linux ARM32-hf FullAOT",   val: [["test-mono-mainline-fullaot", "debian-8-armhf"]]},
+	{name: "Linux ARM32-el FullAOT",   val: [["test-mono-mainline-fullaot", "debian-8-armel"]]},
+	{name: "Linux Intel64 HybridAOT",  val: [["test-mono-mainline-hybridaot", "ubuntu-1404-amd64"]]},
+	{name: "Linux Intel64 Bitcode",    val: [["test-mono-mainline-bitcode", "ubuntu-1404-amd64"]]}
+]
+
+
 // Lanes visible in "Build Logs (Special Configurations)" but omitted from status page
 let jenkinsLaneSpecsPlusValgrind = [
 	["Linux Intel64 Bitcode Valgrind", "test-mono-mainline-bitcode-valgrind/label=ubuntu-1404-amd64"]
+]
+
+let jenkinsLaneDetailsPlusValgrind = [
+	{name: "Linux Intel64 Bitcode Valgrind", val: [["test-mono-mainline-bitcode-valgrind", "ubuntu-1404-amd64"]]}
 ]
 
 // Repo we expect our hashes to correspond to (any entry acceptable)
@@ -334,8 +354,8 @@ class Lane<B extends BuildBase> {
 		//console.log("last week: ", lastWeek); //debug2
 
 
-		//console.log("loading lane " + this.name); //debug2
-		//console.log("\t api url: ", this.apiUrl); //debug2
+		console.log("loading lane " + this.name); //debug2
+		console.log("\t api url: ", this.apiUrl); //debug2
 
 		// First network-fetch Jenkins data for the lane
 		$.get(this.apiUrl, laneResult => {
@@ -354,6 +374,9 @@ class Lane<B extends BuildBase> {
 
 			//TODO2 since we're querying from db, we can change this to a time of 1 week
 
+			if (this.name == "Mac Intel64")
+					console.log("special - laneResult: ", laneResult); //debug2
+
 			// For each build in the Jenkins JSON
 			for (let buildInfo of laneResult) {
 				//console.log("buildInfo: ", buildInfo); //debug2
@@ -361,6 +384,7 @@ class Lane<B extends BuildBase> {
 				let build = new this.buildConstructor(this.tag, buildInfo.Id.toString());
 
 				build.interpretMetadata(buildInfo);
+				build.metadataStatus.loaded = true;
 
 				//console.log("what is this build: ", build);
 
@@ -520,9 +544,11 @@ class Lane<B extends BuildBase> {
 				*/
 
 
+				/*
 				queries++
 				if (queries >= maxBuildQueries)
 					break
+				*/
 			}
 
 			invalidateUi()
@@ -598,6 +624,11 @@ function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 		make(jenkinsLaneDetails, true)
 		//make(jenkinsLaneSpecs, true)
 
+		if (laneVisibilityLevel >= 2)
+			make(jenkinsLaneDetailsPlus, false);
+		if (laneVisibilityLevel >= 3)
+			make(jenkinsLaneDetailsPlusValgrind, false);
+
 		/*
 		if (laneVisibilityLevel >= 2)
 			make(jenkinsLaneSpecsPlus, false)
@@ -638,6 +669,7 @@ class BuildStandard extends BuildBase {
 		let gitHash:string = null
 
 		if (this.gitHash == null) {
+
 			let metaUrl = jenkinsBuildUrlWithJobName(data.JobName, data.PlatformName, data.Id);
 
 			$.ajax({
@@ -687,6 +719,8 @@ class BuildStandard extends BuildBase {
 				},
 				async: false
 			});
+
+			console.log("needed to acquire githash for: ", data.JobName, ", : ", data.PlatformName, " - githash: ", gitHash, ". data: ", data);
 		}
 
 		if (this.gitHash == null) {
