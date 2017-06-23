@@ -354,8 +354,8 @@ class Lane<B extends BuildBase> {
 		//console.log("last week: ", lastWeek); //debug2
 
 
-		console.log("loading lane " + this.name); //debug2
-		console.log("\t api url: ", this.apiUrl); //debug2
+		//console.log("loading lane " + this.name); //debug2
+		//console.log("\t api url: ", this.apiUrl); //debug2
 
 		// First network-fetch Jenkins data for the lane
 		$.get(this.apiUrl, laneResult => {
@@ -363,8 +363,10 @@ class Lane<B extends BuildBase> {
 			this.everLoaded = true
 			if (hashHas('debug')) console.log("lane loaded url", this.apiUrl, "result:", laneResult)
 
-
-			//console.log("for api url: ", this.apiUrl); //debug2
+			if (this.tag == "test-mono-mainline-linux/label=debian-8-armel") {
+				console.log("tag: ", this.tag);
+				console.log("for api url: ", this.apiUrl, " result: ", laneResult); //debug2
+			}
 
 			let queries = 0
 
@@ -374,19 +376,23 @@ class Lane<B extends BuildBase> {
 
 			//TODO2 since we're querying from db, we can change this to a time of 1 week
 
-			if (this.name == "Mac Intel64")
-					console.log("special - laneResult: ", laneResult); //debug2
+			//if (this.name == "Mac Intel64")
+			//		console.log("special - laneResult: ", laneResult); //debug2
+
 
 			// For each build in the Jenkins JSON
 			for (let buildInfo of laneResult) {
 				//console.log("buildInfo: ", buildInfo); //debug2
 
+
 				let build = new this.buildConstructor(this.tag, buildInfo.Id.toString());
 
 				build.interpretMetadata(buildInfo);
 				build.metadataStatus.loaded = true;
+				build.babysitterStatus.loaded = true;
 
 				//console.log("what is this build: ", build);
+				build.interpretBabysitter(buildInfo);
 
 				this.buildMap[buildInfo.Id] = build;
 
@@ -590,7 +596,7 @@ function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 					let lane = new Lane(lanes.length, b, name, laneName, jobName, platformName, !!d, isCore)
 					lanes.push(lane)
 					lane.load();
-					//console.log("[trackme] lane after: ", lane); //debug2
+					console.log("[trackme] lane after: ", lane); //debug2
 				}
 			}
 
@@ -619,6 +625,7 @@ function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 
 	// Which specs to load are determined by overloads set in HTML file
 	if (haveOverloadLaneContents) {
+		console.log("overloading lanes"); //debug2
 		make(overloadLaneContents, false)
 	} else {
 		make(jenkinsLaneDetails, true)
@@ -659,9 +666,11 @@ class BuildStandard extends BuildBase {
 		this.result = data.Result.trim().toUpperCase();
 		this.building = false;
 		this.gitHash = data.GitHash;
-		this.pr = data.PrId;
-		this.prTitle = data.PrTitle;
-		this.prAuthor = data.PrAuthor;
+		if (data.PrId !== -1 && data.PrTitle !== null && data.PrAuthor !== null) {
+			this.pr = data.PrId;
+			this.prTitle = data.PrTitle;
+			this.prAuthor = data.PrAuthor;
+		}
 		this.babysitterBlobUrl = data.BabysitterUrl;
 		this.complete = true;
 
@@ -720,7 +729,7 @@ class BuildStandard extends BuildBase {
 				async: false
 			});
 
-			console.log("needed to acquire githash for: ", data.JobName, ", : ", data.PlatformName, " - githash: ", gitHash, ". data: ", data);
+			//console.log("needed to acquire githash for: ", data.JobName, ", : ", data.PlatformName, " - githash: ", gitHash, ". data: ", data);
 		}
 
 		if (this.gitHash == null) {

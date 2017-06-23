@@ -132,6 +132,40 @@ class Build extends BuildStandard {
 	}
 
 	// See scripts/ci/babysitter in mono repo for json format
+
+
+	interpretBabysitter(data) {
+
+		if (data.JobName == "test-mono-mainline-linux" && data.PlatformName == "debian-8-armel" && data.Id == 2540) {
+			console.log("this data is esp: ", data); //debug2
+		}
+
+		//console.log("data.FailedTests: ", data.FailedTests); //debug2
+		if (data.FailedTests.length > 0)
+			for (let failedTest of data.FailedTests) {
+				//console.log("failure: ", failure); //debug2
+				let failure = new Failure(failedTest.Invocation, failedTest.TestName);
+				let failType = failedTest.Failure.trim().toLowerCase();
+				if (failType == "crash")
+					failure.kind = FailureKind.Crash;
+				else if (failType == "timeout")
+					failure.kind = FailureKind.Hang;
+				else if (failType == "normal")
+					failure.kind = FailureKind.Test;
+
+				for (let tracker of this.massFailureTrackers)
+					tracker.feed(failure);
+
+				if (failedTest.FinalCode == 124)
+					failure.kind = FailureKind.Hang
+				else if (buildFailure(failure))
+					failure.kind = FailureKind.Build
+
+				this.failures.push(failure);
+			}
+	}
+
+	/*
 	interpretBabysitter(jsons: any[]) {
 		if (hashHas('options')) console.log("Got babysitter", jsons)
 
@@ -171,6 +205,7 @@ class Build extends BuildStandard {
 			}
 		}
 	}
+	*/
 
 	massFailed() {
 		return this.massFailureTrackers.some(tracker => tracker.excess())
@@ -1059,6 +1094,8 @@ let ContentArea = React.createClass({
 		)
 		let dateRange = new DateRange() // Current range for "all data seen"
 		let testFilter = currentTestFilter()
+
+		console.log("readyLanes: ", readyLanes); //debug2
 
 		if (readyLanes.length) {
 			// Which pane are we in? // FIXME: Does this really need to be all in one function
