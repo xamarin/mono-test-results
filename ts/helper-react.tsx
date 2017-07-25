@@ -324,25 +324,32 @@ let titleBarSpec = [
 // Figure out current page from URL. Show current page to left, links to all other pages to right
 class TitleBar extends React.Component<{}, {}> {
 	render() {
-		let pageTitle = "CI viewer" // Title for unknown page
 		let currentPath = window.location.pathname
 		let currentFilename = currentPath.substring(currentPath.lastIndexOf('/')+1)
-		let otherPages : JSX.Element[] = []
+		let pages : JSX.Element[] = []
 		for (let spec of titleBarSpec) {
 			let url = spec[0]
 			let title = spec[1]
 			if (currentFilename == url) {
-				pageTitle = title
+				pages.push(<li className="active"><a href={url} key={url}>{title}</a></li>)
 			} else {
-				if (otherPages.length)
-					otherPages.push(<span key={url+"bar"}> | </span>)
-				otherPages.push(<a href={url} key={url}>{title}</a>)
+				pages.push(<li><a href={url} key={url}>{title}</a></li>)
 			}
 		}
-		return <div>
-				<span className="pageTitle">{pageTitle}</span> {" "}
-				| See also: {otherPages}
-			</div>
+		return	<nav className="navbar navbar-inverse">
+					<div className="container-fluid">
+						<div className="navbar-header">
+							<div className="navbar-brand">
+								<img alt="Mono Logo" src="http://www.mono-project.com/images/mono-gorilla.png" height="25px" />
+							</div>
+						</div>
+						<div className="navbar-header">
+							<ul className="nav navbar-nav">
+								{pages}
+							</ul>
+						</div>
+					</div>
+				</nav>
 	}
 }
 
