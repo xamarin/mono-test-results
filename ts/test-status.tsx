@@ -243,10 +243,13 @@ let StatusArea = React.createClass({
 })
 
 registerRender( () => {
-	ReactDOM.render(<div>
-		<TitleBar />
-		<hr />
-		<StatusArea />
-	</div>, document.getElementById('content'))
+	ReactDOM.render(
+		<div>
+			<TitleBar />
+			<div className="container">
+				<StatusArea />
+			</div>
+		</div>
+		, document.getElementById('content'))
 })
 render()

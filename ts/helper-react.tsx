@@ -180,6 +180,7 @@ hashchange()
  * be derivable from data, but when I tried that I didn't get rerenders. Maybe
  * I am not using React correctly here. --Andi */
 class ChoiceProps<Key> {
+	name: string
 	enum: any
 	data: Ref<Key>
 	value: Key     // Pass in the current value of data.value when making props object
@@ -193,13 +194,10 @@ class Choice<Key> extends React.Component<ChoiceProps<Key>, {}> {
 	}
 
 	render() {
+		let currentLabel: string;
 		let children: JSX.Element[] = []
-		let first = true
 		for (let key of enumStringKeys(this.props.enum)) {
 			let value = this.props.enum[key] as Key
-
-			if (!first)
-				children.push(<span key={"comma"+value}>, </span>)
 
 			let reactKey = "button"+value
 
@@ -218,24 +216,38 @@ class Choice<Key> extends React.Component<ChoiceProps<Key>, {}> {
 				}
 			}
 
-			if (value == this.props.value) {
-				children.push(<span key={reactKey}>{label}</span>)
-			} else {
-				children.push(<Clickable key={reactKey} label={label}
-					handler={
-						e => {
-							this.props.data.set( value )
-							invalidateUi()
-						}
-					} />)
-			}
-			first = false
+			if (value == this.props.value)
+				currentLabel = label;
+
+			children.push(
+				<li>
+					<Clickable key={reactKey} label={label}
+						handler={
+							e => {
+								this.props.data.set( value )
+								invalidateUi()
+							}
+						} />
+				</li>
+			)
 		}
-		return <span className="choice">{children}</span>
+
+		return	<div className="btn-group" role="group">
+					<button type="button" className="btn btn-default dropdown-toggle" data-toggle="dropdown">
+						{this.props.name}: <b>{currentLabel}</b>
+						&nbsp;<span className="caret"></span>
+					</button>
+					<ul className="dropdown-menu">
+						{children}
+					</ul>
+				</div>
 	}
 }
 
-class CheckboxProps<Key> extends ChoiceProps<Key> {
+class CheckboxProps<Key> {
+	enum: any
+	data: Ref<Key>
+	value: Key     // Pass in the current value of data.value when making props object
 	on: Key
 	off: Key
 	label:string
@@ -250,19 +262,21 @@ class Checkbox<Key> extends React.Component<CheckboxProps<Key>, {}> {
 	render() {
 		let currentlyChecked:boolean = this.props.data.value == this.props.on
 		return (
-			<span className="checkbox">
-				<input
-					type="checkbox"
-					checked={currentlyChecked}
-					onChange={
-						e => {
-							this.props.data.set( currentlyChecked ? this.props.off : this.props.on )
-							invalidateUi()
+			<div className="checkbox">
+				<label>
+					<input
+						type="checkbox"
+						checked={currentlyChecked}
+						onChange={
+							e => {
+								this.props.data.set( currentlyChecked ? this.props.off : this.props.on )
+								invalidateUi()
+							}
 						}
-					}
-				/> {" "}
-				{this.props.label}
-			</span>
+					/> {" "}
+					{this.props.label}
+				</label>
+			</div>
 		)
 	}
 }

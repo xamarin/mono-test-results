@@ -131,3 +131,15 @@ li.failureExpand a {
 	margin-right:5px;
 }
 
+.filterByLabel {
+	width: 170px;
+}
+
+.filterByInput {
+	width: 170px;
+}
+
+.filterByButton {
+	width: 75px;
+}
+
