@@ -354,7 +354,7 @@ class TitleBar extends React.Component<{}, {}> {
 					<div className="container-fluid">
 						<div className="navbar-header">
 							<div className="navbar-brand">
-								<img alt="Mono Logo" src="http://www.mono-project.com/images/mono-gorilla.png" height="25px" />
+								<img alt="Mono Logo" src="images/mono-gorilla.png" height="25px" />
 							</div>
 						</div>
 						<div className="navbar-header">
