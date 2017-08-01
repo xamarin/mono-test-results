@@ -238,12 +238,10 @@ enum DisplaySpan {
 	Last24Hr
 }
 
-class ChoiceVisibility extends Choice<Visibility> {}
+class CheckboxVisibility extends Checkbox<Visibility> {}
 let prVisible = new HashRef("pr", Visibility, Visibility.Hide)
 let massFailVisible = new HashRef("massFail", Visibility, Visibility.Show)
 let inProgressVisible = new HashRef("inProgress", Visibility, Visibility.Hide)
-
-class CheckboxVisibility extends Checkbox<Visibility> {}
 let laneVisible : HashRef<Visibility>[] = null
 if (showLaneCheckboxes)
 	laneVisible = lanes.map(lane =>
@@ -538,7 +536,7 @@ let ReloadControl = makeReloadControl(lanes, currentlyLoading)
 
 // UI to display/dismiss a test filter
 function showingOnly(display:JSX.Element, clear: ()=>void) {
-	return <span> | Showing only {display} <Clickable label="[X]" key={null}
+	return <span>Showing only {display} <Clickable label="[X]" key={null}
 		handler={e => { // Note: Clears global handler
 			clear()
 			invalidateUi()
@@ -563,21 +561,19 @@ class FilterEntry extends React.Component<FilterEntryProps, FilterEntryState> {
 	}
 
 	render() {
-		return <span>
-			Filter by {this.props.label}:{" "}
-			<form onSubmit={ (evt) => {
-				let input = this.state.input
-				this.setState({input: null})
-				this.props.filterRef.set(input)
+		return	<form onSubmit={ (evt) => {
+					let input = this.state.input
+					this.setState({input: null})
+					this.props.filterRef.set(input)
 
-				evt.preventDefault() // Don't submit!
-			}} className="inlineForm">
-				<input value={this.state.input} onChange={ (evt) => {
-					this.setState({input: (evt.target as any).value})
-				}} /> {" "}
-				<input type="submit" value="Search" />
-			</form>
-		</span>
+					evt.preventDefault() // Don't submit!
+				}} className="form-inline filterByForm">
+					<div className="form-group">
+						<label className="filterByLabel" htmlFor={this.props.filterRef.hashKey}>Filter by {this.props.label} {" "}</label>
+						<input type="text" className="form-control filterByInput" id={this.props.filterRef.hashKey} value={this.state.input} onChange={ (evt) => { this.setState({input: (evt.target as any).value}) }} />
+					</div>
+					<button type="submit" className="btn btn-default filterByButton" >Search</button>
+				</form>
 	}
 }
 
@@ -599,6 +595,41 @@ class TestFilterDisplay extends React.Component<TestFilterDisplayProps, {}> {
 	}
 }
 
+// Component for UI to display/dismiss filter showing/hiding mass-fails
+
+let ChoiceMassFails = React.createClass({
+	render: function() {
+		return <CheckboxVisibility enum={Visibility} data={massFailVisible} value={massFailVisible.value}
+					on={Visibility.Show} off={Visibility.Hide} label="Mass-fails" />
+	}
+})
+
+// Component for UI to display/dismiss filter showing/hiding PR builds
+
+let ChoicePullRequests = React.createClass({
+	render: function() {
+		if (groupBy.value == GroupBy.PRs)
+			return null
+
+		return <CheckboxVisibility enum={Visibility} data={prVisible} value={prVisible.value}
+					on={Visibility.Show} off={Visibility.Hide} label="PRs" />
+	}
+})
+
+// Component for UI to display/dismiss filter showing/hiding In Progress builds
+
+let ChoiceInProgress = React.createClass({
+	render: function() {
+		if (groupBy.value == GroupBy.Failures)
+			return null
+		if (groupBy.value == GroupBy.PRs)
+			return null
+
+		return <CheckboxVisibility enum={Visibility} data={inProgressVisible} value={inProgressVisible.value}
+					on={Visibility.Show} off={Visibility.Hide} label="In progress" />
+	}
+})
+
 function clearPrFilters() {
 	prFilter.clear()
 	prGithubFilter.clear()
@@ -615,10 +646,10 @@ let PrFilterDisplay = React.createClass({
 		} else if (prGithubFilter.value) {
 			return showingOnly(<b>GitHub user {prGithubFilter.value}</b>, clearPrFilters)
 		} else {
-			return <span>
-				{" "} | <FilterEntry label="PR#" filterRef={prFilter} />
-				{" "} | <FilterEntry label="GitHub handle" filterRef={prGithubFilter} />
-			</span>
+			return	<div>
+						<FilterEntry label="PR#" filterRef={prFilter} />
+						<FilterEntry label="GitHub handle" filterRef={prGithubFilter} />
+					</div>
 		}
 	}
 })
@@ -1382,40 +1413,37 @@ let ContentArea = React.createClass({
 
 // Render entire page
 registerRender( () => {
-	let inProgressChoice = groupBy.value != GroupBy.Failures && groupBy.value != GroupBy.PRs
-		? <span>
-			{" "}|{" "}
-			In progress <ChoiceVisibility enum={Visibility} data={inProgressVisible} value={inProgressVisible.value} />
-		  </span>
-		: null
-	let prChoice = groupBy.value != GroupBy.PRs
-		? <span>
-			{" "}|{" "}
-			PRs <ChoiceVisibility enum={Visibility} data={prVisible} value={prVisible.value} />
-		  </span>
-		: null
-
-	ReactDOM.render(<div>
-		<TitleBar />
-		<br />
-		<ReloadControl />
+	ReactDOM.render(
 		<div>
-			Group by: <ChoiceGroupBy enum={GroupBy} data={groupBy} value={groupBy.value} />
-			<br />
-			Timespan: <ChoiceDisplaySpan enum={DisplaySpan} data={displaySpan} value={displaySpan.value} />
-			<br />
-			Filters:
-			Mass-fails <ChoiceVisibility enum={Visibility} data={massFailVisible} value={massFailVisible.value} />
-			{prChoice}
-			{inProgressChoice}
-			<TestFilterDisplay testFilter={currentTestFilter()} />
-			<PrFilterDisplay />
-			<LaneCheckboxDisplay />
+			<TitleBar />
+			<div className="container">
+				<div className="row">
+					<ReloadControl />
+					<div>
+						<div className="btn-group" role="group">
+							<ChoiceGroupBy name="Group by" enum={GroupBy} data={groupBy} value={groupBy.value} />
+							<ChoiceDisplaySpan name="Timespan" enum={DisplaySpan} data={displaySpan} value={displaySpan.value} />
+						</div>
+
+						<ChoiceMassFails />
+						<ChoicePullRequests />
+						<ChoiceInProgress />
+
+						<TestFilterDisplay testFilter={currentTestFilter()} />
+						<PrFilterDisplay />
+						<LaneCheckboxDisplay />
+					</div>
+					<LoadingBox />
+					<LaneErrorBox />
+				</div>
+				<div className="row">
+					<hr className="sectionDivider" />
+				</div>
+				<div className="row">
+					<ContentArea />
+				</div>
+			</div>
 		</div>
-		<LoadingBox />
-		<LaneErrorBox />
-		<hr className="sectionDivider" />
-		<ContentArea />
-	</div>, document.getElementById('content'))
+		, document.getElementById('content'))
 })
 render()

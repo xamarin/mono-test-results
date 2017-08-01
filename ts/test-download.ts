@@ -213,7 +213,6 @@ let jenkinsLaneSpecsPlus = [
 	["Linux Intel64 Checked",    "test-mono-mainline-checked/label=ubuntu-1404-amd64"],
 	["Linux Intel32 Coop",       "test-mono-mainline-coop/label=ubuntu-1404-i386"],
 	["Linux Intel64 Coop",       "test-mono-mainline-coop/label=ubuntu-1404-amd64"],
-	["Linux Intel32 FullAOT",    "test-mono-mainline-fullaot/label=ubuntu-1404-i386"],
 	["Linux Intel64 FullAOT",    "test-mono-mainline-fullaot/label=ubuntu-1404-amd64", "test-mono-pull-request-amd64-fullaot"],
 	["Linux ARM64 FullAOT",      "test-mono-mainline-fullaot/label=debian-8-arm64"],
 	["Linux ARM32-hf FullAOT",   "test-mono-mainline-fullaot/label=debian-8-armhf"],

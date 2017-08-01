@@ -180,6 +180,7 @@ hashchange()
  * be derivable from data, but when I tried that I didn't get rerenders. Maybe
  * I am not using React correctly here. --Andi */
 class ChoiceProps<Key> {
+	name: string
 	enum: any
 	data: Ref<Key>
 	value: Key     // Pass in the current value of data.value when making props object
@@ -193,13 +194,10 @@ class Choice<Key> extends React.Component<ChoiceProps<Key>, {}> {
 	}
 
 	render() {
+		let currentLabel: string;
 		let children: JSX.Element[] = []
-		let first = true
 		for (let key of enumStringKeys(this.props.enum)) {
 			let value = this.props.enum[key] as Key
-
-			if (!first)
-				children.push(<span key={"comma"+value}>, </span>)
 
 			let reactKey = "button"+value
 
@@ -218,24 +216,38 @@ class Choice<Key> extends React.Component<ChoiceProps<Key>, {}> {
 				}
 			}
 
-			if (value == this.props.value) {
-				children.push(<span key={reactKey}>{label}</span>)
-			} else {
-				children.push(<Clickable key={reactKey} label={label}
-					handler={
-						e => {
-							this.props.data.set( value )
-							invalidateUi()
-						}
-					} />)
-			}
-			first = false
+			if (value == this.props.value)
+				currentLabel = label;
+
+			children.push(
+				<li>
+					<Clickable key={reactKey} label={label}
+						handler={
+							e => {
+								this.props.data.set( value )
+								invalidateUi()
+							}
+						} />
+				</li>
+			)
 		}
-		return <span className="choice">{children}</span>
+
+		return	<div className="btn-group" role="group">
+					<button type="button" className="btn btn-default dropdown-toggle" data-toggle="dropdown">
+						{this.props.name}: <b>{currentLabel}</b>
+						&nbsp;<span className="caret"></span>
+					</button>
+					<ul className="dropdown-menu">
+						{children}
+					</ul>
+				</div>
 	}
 }
 
-class CheckboxProps<Key> extends ChoiceProps<Key> {
+class CheckboxProps<Key> {
+	enum: any
+	data: Ref<Key>
+	value: Key     // Pass in the current value of data.value when making props object
 	on: Key
 	off: Key
 	label:string
@@ -250,19 +262,21 @@ class Checkbox<Key> extends React.Component<CheckboxProps<Key>, {}> {
 	render() {
 		let currentlyChecked:boolean = this.props.data.value == this.props.on
 		return (
-			<span className="checkbox">
-				<input
-					type="checkbox"
-					checked={currentlyChecked}
-					onChange={
-						e => {
-							this.props.data.set( currentlyChecked ? this.props.off : this.props.on )
-							invalidateUi()
+			<div className="checkbox">
+				<label>
+					<input
+						type="checkbox"
+						checked={currentlyChecked}
+						onChange={
+							e => {
+								this.props.data.set( currentlyChecked ? this.props.off : this.props.on )
+								invalidateUi()
+							}
 						}
-					}
-				/> {" "}
-				{this.props.label}
-			</span>
+					/> {" "}
+					{this.props.label}
+				</label>
+			</div>
 		)
 	}
 }
@@ -312,7 +326,8 @@ let titleBarSpec = [
 	["index.html", "Quick status"],
 	["builds.html", "Build logs"],
 	["builds-plus.html", "Build logs (Special configurations)"],
-	["builds-stress.html", "Build logs (Stress test)"],
+	["builds-stress.html", "Stress test"],
+	["builds-profiler.html", "Profiler"],
 	["builds-2017-06.html", "2017-06"],
 	["builds-2017-04.html", "2017-04"],
 	["builds-2017-02.html", "2017-02"],
@@ -323,25 +338,32 @@ let titleBarSpec = [
 // Figure out current page from URL. Show current page to left, links to all other pages to right
 class TitleBar extends React.Component<{}, {}> {
 	render() {
-		let pageTitle = "CI viewer" // Title for unknown page
 		let currentPath = window.location.pathname
 		let currentFilename = currentPath.substring(currentPath.lastIndexOf('/')+1)
-		let otherPages : JSX.Element[] = []
+		let pages : JSX.Element[] = []
 		for (let spec of titleBarSpec) {
 			let url = spec[0]
 			let title = spec[1]
 			if (currentFilename == url) {
-				pageTitle = title
+				pages.push(<li className="active"><a href={url} key={url}>{title}</a></li>)
 			} else {
-				if (otherPages.length)
-					otherPages.push(<span key={url+"bar"}> | </span>)
-				otherPages.push(<a href={url} key={url}>{title}</a>)
+				pages.push(<li><a href={url} key={url}>{title}</a></li>)
 			}
 		}
-		return <div>
-				<span className="pageTitle">{pageTitle}</span> {" "}
-				| See also: {otherPages}
-			</div>
+		return	<nav className="navbar navbar-inverse">
+					<div className="container-fluid">
+						<div className="navbar-header">
+							<div className="navbar-brand">
+								<img alt="Mono Logo" src="images/mono-gorilla.png" height="25px" />
+							</div>
+						</div>
+						<div className="navbar-header">
+							<ul className="nav navbar-nav">
+								{pages}
+							</ul>
+						</div>
+					</div>
+				</nav>
 	}
 }
 
