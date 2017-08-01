@@ -135,15 +135,8 @@ class Build extends BuildStandard {
 
 
 	interpretBabysitter(data) {
-
-		if (data.JobName == "test-mono-mainline-linux" && data.PlatformName == "debian-8-armel" && data.Id == 2540) {
-			console.log("this data is esp: ", data); //debug2
-		}
-
-		//console.log("data.FailedTests: ", data.FailedTests); //debug2
 		if (data.FailedTests.length > 0)
 			for (let failedTest of data.FailedTests) {
-				//console.log("failure: ", failure); //debug2
 				let failure = new Failure(failedTest.Invocation, failedTest.TestName);
 				let failType = failedTest.Failure.trim().toLowerCase();
 				if (failType == "crash")
@@ -164,48 +157,6 @@ class Build extends BuildStandard {
 				this.failures.push(failure);
 			}
 	}
-
-	/*
-	interpretBabysitter(jsons: any[]) {
-		if (hashHas('options')) console.log("Got babysitter", jsons)
-
-		for (let json of jsons) {
-			if (json.final_code) {
-				let resolved = false
-				let invocation = json.invocation
-				if (invocation in failureStepRemap)
-					invocation = failureStepRemap[invocation]
-
-				if (json.babysitter_protocol || json.loaded_xml) {
-					for(let testName in json.tests) {
-						let failure = new Failure(invocation, testName)
-						let test = json.tests[testName]
-						if (test.crash_failures)
-							failure.kind = FailureKind.Crash
-						else if (test.timeout_failures)
-							failure.kind = FailureKind.Hang
-						else if (test.normal_failures)
-							failure.kind = FailureKind.Test
-
-						this.failures.push(failure)
-						resolved = true
-
-						for (let tracker of this.massFailureTrackers)
-							tracker.feed(failure)
-					}
-				}
-				if (!resolved) {
-					let failure = new Failure(invocation)
-					if (json.final_code == "124") // See GNU timeout manpage
-						failure.kind = FailureKind.Hang
-					else if (buildFailure(failure))
-						failure.kind = FailureKind.Build
-					this.failures.push(failure)
-				}
-			}
-		}
-	}
-	*/
 
 	massFailed() {
 		return this.massFailureTrackers.some(tracker => tracker.excess())
@@ -1125,8 +1076,6 @@ let ContentArea = React.createClass({
 		)
 		let dateRange = new DateRange() // Current range for "all data seen"
 		let testFilter = currentTestFilter()
-
-		console.log("readyLanes: ", readyLanes); //debug2
 
 		if (readyLanes.length) {
 			// Which pane are we in? // FIXME: Does this really need to be all in one function

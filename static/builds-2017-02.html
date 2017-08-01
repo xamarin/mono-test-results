@@ -13,6 +13,7 @@
 			module = {}
 			overloadAllowPR = false
 			overloadLaneContents = [
+			/*
 				["Mac Intel64",
 					"s/label=osx-amd64"
 				],
@@ -40,6 +41,16 @@
 				["Windows Intel64",
 					"s/label=w64"
 				]
+				*/
+				{name: "Mac Intel64",     val: [["s", "osx-amd64"]]},
+				{name: "Mac Intel32",     val: [["s", "osx-i386"]]},
+				{name: "Linux Intel64",   val: [["test-mono-mainline-2017-02", "ubuntu-1404-amd64"]]},
+				{name: "Linux Intel32",   val: [["test-mono-mainline-2017-02", "ubuntu-1404-i386"]]},
+				{name: "Linux ARM64",     val: [["test-mono-mainline-2017-02", "debian-8-arm64"]]},
+				{name: "Linux ARM32-hf",  val: [["test-mono-mainline-2017-02", "debian-8-armhf"]]},
+				{name: "Linux ARM32-el",  val: [["test-mono-mainline-2017-02", "debian-8-armel"]]},
+				{name: "Windows Intel32", val: [["s", "w32"]]},
+				{name: "Windows Intel64", val: [["s", "w64"]]}
 			]
 		</script>
 		<script type="text/javascript" src="js/breakout.js"></script>
