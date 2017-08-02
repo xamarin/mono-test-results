@@ -313,8 +313,7 @@ class Lane<B extends BuildBase> {
 
 	// Call to download build list for lane and then download all build data not already downloaded
 	load() {
-		if (hashHas('debug'))
-			console.log("lane loading url", this.apiUrl)
+		if (hashHas('debug')) console.log("lane loading url", this.apiUrl)
 
 		// First network-fetch Jenkins data for the lane
 		$.get(this.apiUrl, laneResult => {

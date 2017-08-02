@@ -52,8 +52,6 @@ class BuildStatus extends React.Component<BuildStatusProps, {}> {
 		let displayList: JSX.Element[] = []
 		let stillLoading = false
 
-		//console.log("[test-status.tsx] buildListing: ", buildListing); //debug2
-
 		// For each lane associated with build
 		for (let lane of Object.keys(buildListing.lanes)) {
 			// For main display, only show entries that are present.
@@ -128,27 +126,19 @@ let StatusArea = React.createClass({
 	render: function() {
 		let readyLanes = statusLanes.filter(lane => lane.visible())
 
-		//console.log("[test-status.tsx] statusLanes: ", statusLanes); //debug2
-
 		let dateRange = new DateRange()
 
 		if (readyLanes.length) {
 			// Categorize builds, and group by git hash
 			let buildListings: {[key:string] : StatusBuildListing} = {}
 
-			//console.log("[test-status.tsx] buildListing initialized"); //debug2
-
 			// For each lane whose data is loaded:
 			for (let lane of readyLanes) {
 				// For each known build for that lane:
-				//console.log("[test-status.tsx] lane: ", lane); //debug2
 				for (let build of lane.builds()) {
-					//console.log("[test-status.tsx] build: ", build); //debug2
 					// Find or create the associated listing object, and add the date, lane, and progress information
 					let buildListing = getOrDefault(buildListings, build.buildTag(),
 							() => new StatusBuildListing(build.gitUrl(), build.gitDisplay()))
-
-					//console.log("[test-status.tsx] buildListing: ", buildListing); //debug2
 
 					buildListing.dateRange.add(build.date)
 					buildListing.lanes[lane.idx] = build
