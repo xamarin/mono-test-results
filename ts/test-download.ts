@@ -152,7 +152,7 @@ function jenkinsBaseUrl(lane:string) {
 
 // Get API query URL for lane metadata
 function jenkinsLaneUrl(jobName:string, platformName:string) {
-	let url = "https://monobi.azurewebsites.net/api/Get?code=vsjcgbQvhNd1aUGwnP9jyZYybABoE1lfzMrgIykGu8dru3z7aiQcHQ==&jobName=" + jobName
+	let url = "https://monobi.azurewebsites.net/api/Get?jobName=" + jobName
 	if (platformName !== "")
 		url += "&platformName=" + platformName
 	url += "&laterThan=" + lastWeek.getFullYear() + "-" + (lastWeek.getMonth() + 1) + "-" + lastWeek.getDate()
