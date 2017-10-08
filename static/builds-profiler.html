@@ -2,7 +2,7 @@
 <html lang="en" data-framework="typescript">
 	<head>
 		<meta charset="utf-8">
-		<title>Mono CI results, 4.8 branch</title>
+		<title>Mono CI results, profiler stress tests</title>
 		<link rel="stylesheet" type="text/css" href="style.css" />
 		<link rel="stylesheet" type="text/css" href="bootstrap.min.css" />
 	</head>
@@ -13,8 +13,26 @@
 			module = {}
 			overloadAllowPR = false
 			overloadLaneContents = [
-				["Linux Intel64",
-					"test-mono-profilerstresstests"
+				["Linux amd64",
+					"test-mono-mainline-linux-profilerstress-x86-x64/label=high-mem-ubuntu-1404-amd64"
+				],
+				["Linux i386",
+					"test-mono-mainline-linux-profilerstress-x86-x64/label=high-mem-ubuntu-1404-i386"
+				],
+				["Linux armel",
+					"test-mono-mainline-linux-profilerstress-arm/label=debian-8-armel-on-arm64"
+				],
+				["Linux armhf",
+					"test-mono-mainline-linux-profilerstress-arm/label=debian-8-armhf-on-arm64"
+				],
+				["Linux arm64",
+					"test-mono-mainline-linux-profilerstress-arm/label=debian-8-arm64"
+				],
+				["OS X i386",
+					"test-mono-mainline-profilerstress/label=osx-i386"
+				],
+				["OS X amd64",
+					"test-mono-mainline-profilerstress/label=osx-amd64"
 				],
 			]
 		</script>

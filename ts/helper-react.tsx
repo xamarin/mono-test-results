@@ -327,7 +327,7 @@ let titleBarSpec = [
 	["builds.html", "Build logs"],
 	["builds-plus.html", "Build logs (Special configurations)"],
 	["builds-stress.html", "Stress test"],
-	["builds-profiler.html", "Profiler"],
+	["builds-profiler.html", "Profiler stress tests"],
 	["builds-2017-06.html", "2017-06"],
 	["builds-2017-04.html", "2017-04"],
 	["builds-2017-02.html", "2017-02"],
