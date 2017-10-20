@@ -13,33 +13,15 @@
 			module = {}
 			overloadAllowPR = false
 			overloadLaneContents = [
-				["Mac Intel64",
-					"test-mono-mainline-stress/label=osx-amd64"
-				],
-				["Mac Intel32",
-					"test-mono-mainline-stress/label=osx-i386"
-				],
-				["Linux Intel64",
-					"test-mono-mainline-linux-stress/label=ubuntu-1404-amd64",
-				],
-				["Linux Intel32",
-					"test-mono-mainline-linux-stress/label=ubuntu-1404-i386",
-				],
-				["Linux ARM64",
-					"test-mono-mainline-linux-stress/label=debian-8-arm64",
-				],
-				["Linux ARM32-hf",
-					"test-mono-mainline-linux-stress/label=debian-8-armhf",
-				],
-				["Linux ARM32-el",
-					"test-mono-mainline-linux-stress/label=debian-8-armel",
-				],
-				["Windows Intel32",
-					"z-stress/label=w32"
-				],
-				["Windows Intel64",
-					"z-stress/label=w64"
-				]
+				{name: "Mac Intel64", val: [["test-mono-mainline-stress", "osx-amd64"]]},
+				{name: "Mac Intel32", val: [["test-mono-mainline-stress", "osx-i386"]]},
+				{name: "Linux Intel64", val: [["test-mono-mainline-linux-stress", "ubuntu-1404-amd64"]]},
+				{name: "Linux Intel32", val: [["test-mono-mainline-linux-stress", "ubuntu-1404-i386"]]},
+				{name: "Linux ARM64", val: [["test-mono-mainline-linux-stress", "debian-8-arm64"]]},
+				{name: "Linux ARM32-hf", val: [["test-mono-mainline-linux-stress", "debian-8-armhf"]]},
+				{name: "Linux ARM32-el", val: [["test-mono-mainline-linux-stress", "debian-8-armel"]]},
+				{name: "Windows Intel32", val: [["z-stress", "w32"]]},
+				{name: "Windows Intel64", val: [["z-stress", "w64"]]}
 			]
 		</script>
 		<script type="text/javascript" src="js/breakout.js"></script>

@@ -125,6 +125,7 @@ let StatusReloadControl = makeReloadControl(statusLanes, statusCurrentlyLoading)
 let StatusArea = React.createClass({
 	render: function() {
 		let readyLanes = statusLanes.filter(lane => lane.visible())
+
 		let dateRange = new DateRange()
 
 		if (readyLanes.length) {

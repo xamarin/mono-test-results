@@ -14,6 +14,10 @@ const cachePrefix = "cache!"
 const localStorageVersion = "1"
 const localStorageCompressMode = "LZString"
 
+const today = new Date()
+const lastWeek = new Date()
+lastWeek.setDate(today.getDate() - 7)
+
 // May be overloaded in HTML file
 declare var overloadMaxBuildQueries : number
 const maxBuildQueries = typeof overloadMaxBuildQueries !== 'undefined' ? overloadMaxBuildQueries : defaultMaxBuildQueries
@@ -147,8 +151,12 @@ function jenkinsBaseUrl(lane:string) {
 }
 
 // Get API query URL for lane metadata
-function jenkinsLaneUrl(lane:string) {
-	return jenkinsBaseUrl(lane) + "/api/json"
+function jenkinsLaneUrl(jobName:string, platformName:string) {
+	let url = "https://monobi.azurewebsites.net/api/Get?jobName=" + jobName
+	if (platformName !== "")
+		url += "&platformName=" + platformName
+	url += "&laterThan=" + lastWeek.getFullYear() + "-" + (lastWeek.getMonth() + 1) + "-" + lastWeek.getDate()
+	return url
 }
 
 // Get common prefix for human-readable and API data versions of one build
@@ -161,38 +169,48 @@ function jenkinsBuildUrl(lane:string, id:string) {
 	return jenkinsBuildBaseUrl(lane, id) + "/api/json?tree=actions[individualBlobs[*],parameters[*],lastBuiltRevision[*],remoteUrls[*]],timestamp,building,result"
 }
 
+function jenkinsBuildUrlWithJobName(jobName:string, platformName: string, id:string) {
+	let url = "https://jenkins.mono-project.com/job/" + jobName
+	if (platformName !== "")
+		url += "/label=" + platformName
+	url += "/" + id
+	url += "/api/json?tree=actions[individualBlobs[*],parameters[*],lastBuiltRevision[*],remoteUrls[*]],timestamp,building,result"
+	return url
+}
+
 // Lanes which build on every commit and are visible in "Build Logs" page
-let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
-	["Mac Intel64",     "test-mono-mainline/label=osx-amd64",               "test-mono-pull-request-amd64-osx"],
-	["Mac Intel32",     "test-mono-mainline/label=osx-i386",                "test-mono-pull-request-i386-osx"],
-	["Linux Intel64",   "test-mono-mainline-linux/label=ubuntu-1404-amd64", "test-mono-pull-request-amd64"],
-	["Linux Intel32",   "test-mono-mainline-linux/label=ubuntu-1404-i386",  "test-mono-pull-request-i386"],
-	["Linux ARM64",     "test-mono-mainline-linux/label=debian-8-arm64",    "test-mono-pull-request-arm64"],
-	["Linux ARM32-hf",  "test-mono-mainline-linux/label=debian-8-armhf",    "test-mono-pull-request-armhf"],
-	["Linux ARM32-el",  "test-mono-mainline-linux/label=debian-8-armel",    "test-mono-pull-request-armel"],
-	["Windows Intel32", "z/label=w32",                                      "w"],
-	["Windows Intel64", "z/label=w64",                                      "x"]
+let jenkinsLaneDetails = [
+	{name: "Mac Intel64",     val: [["test-mono-mainline", "osx-amd64"],    		   ["test-mono-pull-request-amd64-osx", ""]]},
+	{name: "Mac Intel32",     val: [["test-mono-mainline", "osx-i386"],    			   ["test-mono-pull-request-i386-osx", ""]]},
+	{name: "Linux Intel64",   val: [["test-mono-mainline-linux", "ubuntu-1404-amd64"], ["test-mono-pull-request-amd64", ""]]},
+	{name: "Linux Intel32",   val: [["test-mono-mainline-linux", "ubuntu-1404-i386"],  ["test-mono-pull-request-i386", ""]]},
+	{name: "Linux ARM64",     val: [["test-mono-mainline-linux", "debian-8-arm64"],    ["test-mono-pull-request-arm64", ""]]},
+	{name: "Linux ARM32-hf",  val: [["test-mono-mainline-linux", "debian-8-armhf"],    ["test-mono-pull-request-armhf", ""]]},
+	{name: "Linux ARM32-el",  val: [["test-mono-mainline-linux", "debian-8-armel"],    ["test-mono-pull-request-armel", ""]]},
+	{name: "Windows Intel32", val: [["z", "w32"],                                      ["w", ""]]},
+	{name: "Windows Intel64", val: [["z", "w64"],                                      ["x", ""]]}
 ]
 
 // Lanes which are visible in "Build Logs (Special Configurations)" and status pages
 // Notes:
 // The "Coop" lanes are partial checked builds (no metadata check)
-let jenkinsLaneSpecsPlus = [
-	["Linux Intel64 MCS",        "test-mono-mainline-mcs/label=ubuntu-1404-amd64",     "test-mono-pull-request-amd64-mcs"],
-	["Linux Intel64 Checked",    "test-mono-mainline-checked/label=ubuntu-1404-amd64"],
-	["Linux Intel32 Coop",       "test-mono-mainline-coop/label=ubuntu-1404-i386"],
-	["Linux Intel64 Coop",       "test-mono-mainline-coop/label=ubuntu-1404-amd64"],
-	["Linux Intel64 FullAOT",    "test-mono-mainline-fullaot/label=ubuntu-1404-amd64", "test-mono-pull-request-amd64-fullaot"],
-	["Linux ARM64 FullAOT",      "test-mono-mainline-fullaot/label=debian-8-arm64"],
-	["Linux ARM32-hf FullAOT",   "test-mono-mainline-fullaot/label=debian-8-armhf"],
-	["Linux ARM32-el FullAOT",   "test-mono-mainline-fullaot/label=debian-8-armel"],
-	["Linux Intel64 HybridAOT",  "test-mono-mainline-hybridaot/label=ubuntu-1404-amd64"],
-	["Linux Intel64 Bitcode",    "test-mono-mainline-bitcode/label=ubuntu-1404-amd64"]
+let jenkinsLaneDetailsPlus = [
+	{name: "Linux Intel64 MCS",        val: [["test-mono-mainline-mcs", "ubuntu-1404-amd64",     "test-mono-pull-request-amd64-mcs"]]},
+	{name: "Linux Intel64 Checked",    val: [["test-mono-mainline-checked", "ubuntu-1404-amd64"]]},
+	{name: "Linux Intel32 Coop",       val: [["test-mono-mainline-coop", "ubuntu-1404-i386"]]},
+	{name: "Linux Intel64 Coop",       val: [["test-mono-mainline-coop", "ubuntu-1404-amd64"]]},
+	{name: "Linux Intel64 FullAOT",    val: [["test-mono-mainline-fullaot", "ubuntu-1404-amd64", "test-mono-pull-request-amd64-fullaot"]]},
+	{name: "Linux ARM64 FullAOT",      val: [["test-mono-mainline-fullaot", "debian-8-arm64"]]},
+	{name: "Linux ARM32-hf FullAOT",   val: [["test-mono-mainline-fullaot", "debian-8-armhf"]]},
+	{name: "Linux ARM32-el FullAOT",   val: [["test-mono-mainline-fullaot", "debian-8-armel"]]},
+	{name: "Linux Intel64 HybridAOT",  val: [["test-mono-mainline-hybridaot", "ubuntu-1404-amd64"]]},
+	{name: "Linux Intel64 Bitcode",    val: [["test-mono-mainline-bitcode", "ubuntu-1404-amd64"]]}
 ]
 
+
 // Lanes visible in "Build Logs (Special Configurations)" but omitted from status page
-let jenkinsLaneSpecsPlusValgrind = [
-	["Linux Intel64 Bitcode Valgrind", "test-mono-mainline-bitcode-valgrind/label=ubuntu-1404-amd64"]
+let jenkinsLaneDetailsPlusValgrind = [
+	{name: "Linux Intel64 Bitcode Valgrind", val: [["test-mono-mainline-bitcode-valgrind", "ubuntu-1404-amd64"]]}
 ]
 
 // Repo we expect our hashes to correspond to (any entry acceptable)
@@ -274,12 +292,12 @@ class Lane<B extends BuildBase> {
 	buildsRemaining: number // Count of builds not yet finished loading
 	buildConstructor: BuildClass<B> // Class object to use when instantiating a new build
 
-	constructor(idx:number, buildConstructor: BuildClass<B>, name:string, laneName:string, isPr:boolean, isCore:boolean) {
+	constructor(idx:number, buildConstructor: BuildClass<B>, name:string, laneName: string, jobName:string, platformName:string, isPr:boolean, isCore:boolean) {
 		this.idx = idx
 		this.name = name
 		this.tag = laneName
 		this.displayUrl = jenkinsBaseUrl(laneName)
-		this.apiUrl = jenkinsLaneUrl(laneName)
+		this.apiUrl = jenkinsLaneUrl(jobName, platformName)
 		this.isPr = isPr
 		this.isCore = isCore
 		this.status = new Status()
@@ -302,158 +320,28 @@ class Lane<B extends BuildBase> {
 			this.status.loaded = true
 			this.everLoaded = true
 			if (hashHas('debug')) console.log("lane loaded url", this.apiUrl, "result:", laneResult)
+
 			let queries = 0
 
-			// Fetch up to an arbitrary number of builds chosen to be "probably about a week's worth of data"
-			// TODO: See if we can figure out a way to fetch a specific time range rather than just "some builds"?
-			this.buildsRemaining = Math.min(laneResult.builds.length, maxBuildQueries)
+			// Fetch up to a number of builds chosen to be a week's worth of data
 
 			// For each build in the Jenkins JSON
-			for (let buildInfo of laneResult.builds) {
-				let buildId = String(buildInfo.number)
-				let timestamp:number = null // FIXME: This variable stores shared mutable state for closures below. This is confusing and brittle.
+			for (let buildInfo of laneResult) {
 
-				// This build is already in memory (apparently the reload button was hit). Processing done
-				if (this.buildMap[buildId] && this.buildMap[buildId].complete) {
-					this.buildsRemaining--
+				let build = new this.buildConstructor(this.tag, buildInfo.Id.toString())
 
-				// This build is new and its data needs to be downloaded.
-				} else {
-					let buildTag = buildId + "!" + this.tag
-					let build = new this.buildConstructor(this.tag, buildId)
+				build.interpretMetadata(buildInfo)
+				build.metadataStatus.loaded = true
+				build.babysitterStatus.loaded = true
 
-					// FetchData is an inner helper function that acquires a network resource and calls a callback with results.
-					// It first queries the localStorage cache to see if the network resource is known. If not, it hits network.
-					let fetchData = (tag:string,    // Tag for cache
-									 url:string,    // URL to load
-									 status:Status, // Status variable to effect
-									 success:(result:string)=>boolean,     // Return true if data good enough to store
-									 failure:(result)=>boolean = ()=>true  // Return true if failure is "real" (false to recover)
-									                                       // (Note: Failure recovery is no longer used,
-									                                       //        it was originally for checking alternate URLs)
-									) => {
-						let storageKey = cachePrefix + buildTag + "!" + tag // Key used in localStorage for this resource
-						let storageValue = localStorageGetItem(storageKey)
+				build.interpretBabysitter(buildInfo)
 
-						if (storageValue) { // This was downloaded already and cached in localstorage
-							status.loaded = true
-							success(LZString.decompress(storageValue)) // Ignore result, value already stored
-							invalidateUi()
-							return
-						}
-
-						if (hashHas('debug')) console.log("build", build.id, "for lane", this.name, "loading", tag, "url", url)
-
-						// Network-fetch resource (Notice: Fetches *text*, not JSON)
-						$.get(url, fetchResult => {
-							if (hashHas('debug')) console.log("build loaded url", url, "result length:", fetchResult.length)
-
-							let mayStore = false
-							status.loaded = true
-							try {
-								// Data successfully loaded! Inform callback.
-								// Callback decides whether data is "good enough" to store in localStorage cache
-								mayStore = success(fetchResult)
-							} catch (e) {
-								console.warn("Failed to interpret result of url:", url, "exception:", e)
-								status.failed = true
-							}
-
-							invalidateUi() // Assume successfully loading a network resource changes the UI
-
-							// If downloaded data is deemed sensible enough to store in the cache, do so
-							if (!status.failed && mayStore && timestamp != null) {
-								let compressed = LZString.compress(fetchResult)
-
-								// Ensure adequate space in local storage
-								let spaceAvailable = localStorageWhittle(maxCacheSize - compressed.length, timestamp)
-
-								// Write into local storage
-								if (spaceAvailable)
-									localStorageSetItem(storageKey, compressed)
-							}
-						}, "text").fail((xhr) => {
-							console.warn("Failed to load url for lane", url, "error", xhr.status);
-
-							// Inform callback of failure, let it decide whether to suppress error
-							// FIXME: Remove this feature? It's not currently used
-							if (failure(xhr.status)) {
-								status.loaded = true
-								status.failed = true
-								invalidateUi()
-							}
-						})
-					}
-
-					// Fetch Jenkins build metadata
-					fetchData("metadata", jenkinsBuildUrl(this.tag, build.id), build.metadataStatus,
-						(result:string) => {
-							let json = JSON.parse(result)
-							build.complete = !json.building && !!json.result
-							build.interpretMetadata(json)
-
-							// Do this pretty late, so reloads look nice.
-							this.buildMap[buildId] = build
-
-							// If metadata received and build is finished,
-							if (fetchBabysitter && build.complete) {
-								timestamp = toNumber(json.timestamp) // In practice already a number, but make sure
-
-								// Manage cache size
-								deletionQueueRegister(timestamp, buildTag)
-
-								// 404s (but not other failure modes) are treated as permanent and cached
-								let babysitter404Key = cachePrefix + buildTag + "!babysitter404"
-								let babysitterIs404 = localStorageGetItem(babysitter404Key)
-								let babysitterUrl = babysitterIs404 ? null : build.babysitterUrl()
-								if (!babysitterIs404 && babysitterUrl != null) {
-									// Fetch babysitter report
-									fetchData("babysitter", babysitterUrl, build.babysitterStatus,
-										(result:string) => {
-											build.interpretBabysitter(jsonLines(result))
-											this.buildsRemaining-- // Got a babysitter report, processing done
-											return true
-										},
-
-										// No babysitter report
-										(status) => {
-											if (+status == 404)
-												localStorageSetItem(babysitter404Key, "1")
-
-											this.buildsRemaining-- // Giving up. Processing done
-											return true
-										}
-									)
-								} else {
-									this.buildsRemaining-- // Won't be checking for known-404'd babysitter report. Processing done
-									build.babysitterStatus.loaded = true
-									build.babysitterStatus.failed = true
-								}
-							} else {
-								this.buildsRemaining-- // Build ongoing, won't be checking for babysitter report. Processing done
-
-							}
-
-							return build.complete // Only cache this result if the build is finished (ie data won't change in future)
-						},
-
-						// Couldn't load metadata, so perform deferred storage of build object and bail
-						// FIXME: Should buildsRemaining be decremented here?
-						(status) => {
-							this.buildMap[buildId] = build
-							return true
-						}
-					)
-				}
-
-				queries++
-				if (queries >= maxBuildQueries)
-					break
+				this.buildMap[buildInfo.Id] = build
 			}
 
 			invalidateUi()
 		}).fail(() => {
-            console.warn("Failed to load url for lane", this.apiUrl);
+            console.warn("Failed to load url for lane", this.apiUrl)
 			this.status.loaded = true
 			this.status.failed = true
 			invalidateUi()
@@ -467,22 +355,30 @@ function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 	let lanes: Lane<B>[] = []
 
 	// Helper: Load contents of a "specs" table such as is seen at the top of this file
-	function make(specs:string[][], isCore:boolean) {
+	function make(specs:object[], isCore:boolean) {
 		for (let spec of specs) {
-			let name = spec[0]
 
-			// Spec is a triplet of name, normal URL tag, PR URL tag
-			let columns = allowPr ? 2 : 1 // Look at PR URL tag column?
+			let name = spec["name"]
+
+			let columns = allowPr ? 2 : 1
+
+
 			for (let d = 0; d < columns; d++) {
 				if (d)
 					name += " (PR)"
-				let laneName = spec[d+1]
+				let jobName = spec["val"][d][0]
+				let platformName = spec["val"][d][1]
+
+				let laneName = jobName
+				if (platformName !== "")
+					laneName += "/label=" + platformName
 				if (laneName) {
-					let lane = new Lane(lanes.length, b, name, laneName, !!d, isCore)
+					let lane = new Lane(lanes.length, b, name, laneName, jobName, platformName, !!d, isCore)
 					lanes.push(lane)
 					lane.load()
 				}
 			}
+
 		}
 	}
 
@@ -490,13 +386,12 @@ function makeLanes<B extends BuildBase>(b: BuildClass<B>) {
 	if (haveOverloadLaneContents) {
 		make(overloadLaneContents, false)
 	} else {
-		make(jenkinsLaneSpecs, true)
+		make(jenkinsLaneDetails, true)
 
 		if (laneVisibilityLevel >= 2)
-			make(jenkinsLaneSpecsPlus, false)
-
+			make(jenkinsLaneDetailsPlus, false)
 		if (laneVisibilityLevel >= 3)
-			make(jenkinsLaneSpecsPlusValgrind, false)
+			make(jenkinsLaneDetailsPlusValgrind, false)
 	}
 
 	return lanes
@@ -515,58 +410,80 @@ class BuildStandard extends BuildBase {
 	prAuthor: string
 	babysitterBlobUrl: string
 
-	interpretMetadata(json) {
-		this.date = new Date(+json.timestamp)
-		this.result = json.result
-		this.building = json.building
+	interpretMetadata(data) {
+		this.date = new Date(data.DateTime)
+		this.result = data.Result.trim().toUpperCase()
+		this.building = false
+		this.gitHash = data.GitHash
+		if (data.PrId !== -1 && data.PrTitle !== null && data.PrAuthor !== null) {
+			this.pr = data.PrId
+			this.prTitle = data.PrTitle
+			this.prAuthor = data.PrAuthor
+		}
+		this.babysitterBlobUrl = data.BabysitterUrl
+		this.complete = true
 
 		let prHash:string = null
 		let gitHash:string = null
 
-		if (json.actions && json.actions.length) {
-			for (let action of json.actions) {
-				if (action._class == "hudson.model.ParametersAction" && action.parameters) {
-					for (let param of action.parameters) {
-						switch (param.name) {
-							case "ghprbPullId":
-								this.pr = param.value
-								break
-							case "ghprbPullLink":
-								this.prUrl = param.value
-								break
-							case "ghprbPullTitle":
-								this.prTitle = param.value
-								break
-							case "ghprbPullAuthorLogin":
-								this.prAuthor = param.value
-								break
-							case "ghprbActualCommit":
-								prHash = param.value
-								break
-							default: break
+		if (this.gitHash == null) {
+
+			let metaUrl = jenkinsBuildUrlWithJobName(data.JobName, data.PlatformName, data.Id)
+
+			$.ajax({
+				url: metaUrl,
+				success: function (fetchResult) {
+
+					if (fetchResult.actions && fetchResult.actions.length) {
+						for (let action of fetchResult.actions) {
+							if (action._class == "hudson.model.ParametersAction" && action.parameters) {
+								for (let param of action.parameters) {
+									switch (param.name) {
+										case "ghprbPullId":
+											this.pr = param.value
+											break
+										case "ghprbPullLink":
+											this.prUrl = param.value
+											break
+										case "ghprbPullTitle":
+											this.prTitle = param.value
+											break
+										case "ghprbPullAuthorLogin":
+											this.prAuthor = param.value
+											break
+										case "ghprbActualCommit":
+											prHash = param.value
+											break
+										default: break
+									}
+								}
+							} else if (action._class == "hudson.plugins.git.util.BuildData") {
+								// There will be typically be one array entry for the standards suite repo and one array entry for the "real" git repo
+								if (action.lastBuiltRevision && action.remoteUrls && gitRepoMatches(action.remoteUrls)) {
+									gitHash = action.lastBuiltRevision.SHA1
+								}
+							} else if (action._class == "com.microsoftopentechnologies.windowsazurestorage.AzureBlobAction") {
+								let blobs = action.individualBlobs
+								if (blobs) {
+									for (let blob of blobs) {
+										let url = blob.blobURL
+										if (endsWith(url, "babysitter_report.json_lines"))
+											this.babysitterBlobUrl = url
+									}
+								}
+							}
 						}
 					}
-				} else if (action._class == "hudson.plugins.git.util.BuildData") {
-					// There will be typically be one array entry for the standards suite repo and one array entry for the "real" git repo
-					if (action.lastBuiltRevision && action.remoteUrls && gitRepoMatches(action.remoteUrls)) {
-						gitHash = action.lastBuiltRevision.SHA1
-					}
-				} else if (action._class == "com.microsoftopentechnologies.windowsazurestorage.AzureBlobAction") {
-					let blobs = action.individualBlobs
-					if (blobs) {
-						for (let blob of blobs) {
-							let url = blob.blobURL
-							if (endsWith(url, "babysitter_report.json_lines"))
-								this.babysitterBlobUrl = url
-						}
-					}
-				}
-			}
+				},
+				async: false
+			})
 		}
 
-		// In a PR branch, the ghprbActualCommit represents the commit that triggered the build,
-		// and the last built revision is some temporary thing that half the time isn't even reported.
-		this.gitHash = prHash ? prHash : gitHash
+		if (this.gitHash == null) {
+			// In a PR branch, the ghprbActualCommit represents the commit that triggered the build,
+			// and the last built revision is some temporary thing that half the time isn't even reported.
+			this.gitHash = prHash ? prHash : gitHash
+		}
 	}
 
 	inProgress() {
@@ -591,6 +508,7 @@ class BuildStandard extends BuildBase {
 
 	gitDisplay() {
 		return this.gitHash ? this.gitHash.slice(0,6) : "[UNKNOWN]"
+
 	}
 
 	gitUrl(allowPr=true) {

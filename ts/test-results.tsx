@@ -132,44 +132,30 @@ class Build extends BuildStandard {
 	}
 
 	// See scripts/ci/babysitter in mono repo for json format
-	interpretBabysitter(jsons: any[]) {
-		if (hashHas('options')) console.log("Got babysitter", jsons)
 
-		for (let json of jsons) {
-			if (json.final_code) {
-				let resolved = false
-				let invocation = json.invocation
-				if (invocation in failureStepRemap)
-					invocation = failureStepRemap[invocation]
 
-				if (json.babysitter_protocol || json.loaded_xml) {
-					for(let testName in json.tests) {
-						let failure = new Failure(invocation, testName)
-						let test = json.tests[testName]
-						if (test.crash_failures)
-							failure.kind = FailureKind.Crash
-						else if (test.timeout_failures)
-							failure.kind = FailureKind.Hang
-						else if (test.normal_failures)
-							failure.kind = FailureKind.Test
+	interpretBabysitter(data) {
+		if (data.FailedTests.length > 0)
+			for (let failedTest of data.FailedTests) {
+				let failure = new Failure(failedTest.Invocation, failedTest.TestName);
+				let failType = failedTest.Failure.trim().toLowerCase();
+				if (failType == "crash")
+					failure.kind = FailureKind.Crash;
+				else if (failType == "timeout")
+					failure.kind = FailureKind.Hang;
+				else if (failType == "normal")
+					failure.kind = FailureKind.Test;
 
-						this.failures.push(failure)
-						resolved = true
+				for (let tracker of this.massFailureTrackers)
+					tracker.feed(failure);
 
-						for (let tracker of this.massFailureTrackers)
-							tracker.feed(failure)
-					}
-				}
-				if (!resolved) {
-					let failure = new Failure(invocation)
-					if (json.final_code == "124") // See GNU timeout manpage
-						failure.kind = FailureKind.Hang
-					else if (buildFailure(failure))
-						failure.kind = FailureKind.Build
-					this.failures.push(failure)
-				}
+				if (failedTest.FinalCode == 124)
+					failure.kind = FailureKind.Hang
+				else if (buildFailure(failure))
+					failure.kind = FailureKind.Build
+
+				this.failures.push(failure);
 			}
-		}
 	}
 
 	massFailed() {
