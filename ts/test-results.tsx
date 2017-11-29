@@ -276,6 +276,7 @@ function buildInTimespan(build: Build) { // Does this build comply with DisplayS
 			break
 		case DisplaySpan.Last7Days:
 			cutoff = 7
+			break
 		case DisplaySpan.Last14Days:
 			cutoff = 14
 			break
