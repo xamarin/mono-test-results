@@ -4,9 +4,9 @@ LZ_VERSION = 1.4.4
 PQ_VERSION = 1.0.0
 
 # Types versions differ in npm from actual versions, for reasons currently unknown.
-REACT_TYPES_VERSION = 15.0.27
-REACT_DOM_TYPES_VERSION = 15.5.0
-JQUERY_TYPES_VERSION = 2.0.46
+REACT_TYPES_VERSION = 15.6.7
+REACT_DOM_TYPES_VERSION = 15.5.6
+JQUERY_TYPES_VERSION = 2.0.48
 
 ifdef DEBUG
 	REACT_URL     = https://fb.me/react-$(REACT_VERSION).js
