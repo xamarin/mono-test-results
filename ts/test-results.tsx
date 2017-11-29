@@ -198,6 +198,7 @@ enum Visibility {
 
 enum DisplaySpan {
 	AllCached,
+	Last14Days,
 	Last7Days,
 	Last48Hr,
 	Last24Hr
@@ -275,6 +276,8 @@ function buildInTimespan(build: Build) { // Does this build comply with DisplayS
 			break
 		case DisplaySpan.Last7Days:
 			cutoff = 7
+		case DisplaySpan.Last14Days:
+			cutoff = 14
 			break
 	}
 	let now = new Date()
