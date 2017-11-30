@@ -22,7 +22,7 @@ LZ_URL = https://raw.githubusercontent.com/pieroxy/lz-string/$(LZ_VERSION)/libs/
 PQ_URL = https://raw.githubusercontent.com/janogonzalez/priorityqueuejs/$(PQ_VERSION)/index.js
 
 all: install/index.html install/style.css install/builds.html install/builds-plus.html install/builds-stress.html install/builds-profiler.html \
-	 install/builds-2017-06.html install/builds-2017-04.html install/builds-2017-02.html install/builds-4.8.html \
+	 install/builds-2017-10.html \
 	 install/js/test-results.js install/js/test-status.js install/js/test-download.js \
 	 install/js/helper.js install/js/helper-react.js install/js/breakout.js \
 	 install/js/react-dom.js install/js/react.js install/js/jquery.js \
@@ -33,7 +33,7 @@ npm:
 	npm i @types/react-dom@$(REACT_DOM_TYPES_VERSION) @types/react@$(REACT_TYPES_VERSION) @types/jquery@$(JQUERY_TYPES_VERSION)
 
 # Copy all static files
-install/index.html install/style.css install/builds.html install/builds-plus.html install/builds-stress.html install/builds-profiler.html install/builds-2017-06.html install/builds-2017-04.html install/builds-2017-02.html install/builds-4.8.html: static/index.html static/style.css static/builds.html static/builds-plus.html static/builds-stress.html static/builds-profiler.html static/builds-2017-06.html static/builds-2017-04.html static/builds-2017-02.html static/builds-4.8.html
+install/index.html install/style.css install/builds.html install/builds-plus.html install/builds-stress.html install/builds-profiler.html install/builds-2017-10.html: static/index.html static/style.css static/builds.html static/builds-plus.html static/builds-stress.html static/builds-profiler.html static/builds-2017-10.html
 	rsync -urhi --exclude=.DS_Store static/ install/
 
 # Download required libraries from CDN URLs.
