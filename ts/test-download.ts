@@ -165,11 +165,11 @@ function jenkinsBuildUrl(lane:string, id:string) {
 let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 	["Mac Intel64",     "test-mono-mainline/label=osx-amd64",               "test-mono-pull-request-amd64-osx"],
 	["Mac Intel32",     "test-mono-mainline/label=osx-i386",                "test-mono-pull-request-i386-osx"],
-	["Linux Intel64",   "test-mono-mainline-linux/label=ubuntu-1404-amd64", "test-mono-pull-request-amd64"],
-	["Linux Intel32",   "test-mono-mainline-linux/label=ubuntu-1404-i386",  "test-mono-pull-request-i386"],
-	["Linux ARM64",     "test-mono-mainline-linux/label=debian-8-arm64",    "test-mono-pull-request-arm64"],
-	["Linux ARM32-hf",  "test-mono-mainline-linux/label=debian-8-armhf",    "test-mono-pull-request-armhf"],
-	["Linux ARM32-el",  "test-mono-mainline-linux/label=debian-8-armel",    "test-mono-pull-request-armel"],
+	["Linux Intel64",   "test-mono-mainline-linux/label=debian-9-amd64",    "test-mono-pull-request-amd64"],
+	["Linux Intel32",   "test-mono-mainline-linux/label=debian-9-i386",     "test-mono-pull-request-i386"],
+	["Linux ARM64",     "test-mono-mainline-linux/label=debian-9-arm64",    "test-mono-pull-request-arm64"],
+	["Linux ARM32-hf",  "test-mono-mainline-linux/label=debian-9-armhf",    "test-mono-pull-request-armhf"],
+	["Linux ARM32-el",  "test-mono-mainline-linux/label=debian-9-armel",    "test-mono-pull-request-armel"],
 	["Windows Intel32", "z/label=w32",                                      "w"],
 	["Windows Intel64", "z/label=w64",                                      "x"]
 ]
@@ -178,21 +178,21 @@ let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 // Notes:
 // The "Coop" lanes are partial checked builds (no metadata check)
 let jenkinsLaneSpecsPlus = [
-	["Linux Intel64 MCS",        "test-mono-mainline-mcs/label=ubuntu-1404-amd64",     "test-mono-pull-request-amd64-mcs"],
-	["Linux Intel64 Checked",    "test-mono-mainline-checked/label=ubuntu-1404-amd64"],
-	["Linux Intel32 Coop",       "test-mono-mainline-coop/label=ubuntu-1404-i386"],
-	["Linux Intel64 Coop",       "test-mono-mainline-coop/label=ubuntu-1404-amd64"],
-	["Linux Intel64 FullAOT",    "test-mono-mainline-fullaot/label=ubuntu-1404-amd64", "test-mono-pull-request-amd64-fullaot"],
-	["Linux ARM64 FullAOT",      "test-mono-mainline-fullaot/label=debian-8-arm64"],
-	["Linux ARM32-hf FullAOT",   "test-mono-mainline-fullaot/label=debian-8-armhf"],
-	["Linux ARM32-el FullAOT",   "test-mono-mainline-fullaot/label=debian-8-armel"],
-	["Linux Intel64 HybridAOT",  "test-mono-mainline-hybridaot/label=ubuntu-1404-amd64"],
-	["Linux Intel64 Bitcode",    "test-mono-mainline-bitcode/label=ubuntu-1404-amd64"]
+	["Linux Intel64 MCS",        "test-mono-mainline-mcs/label=debian-9-amd64",     "test-mono-pull-request-amd64-mcs"],
+	["Linux Intel64 Checked",    "test-mono-mainline-checked/label=debian-9-amd64"],
+	["Linux Intel32 Coop",       "test-mono-mainline-coop/label=debian-9-i386"],
+	["Linux Intel64 Coop",       "test-mono-mainline-coop/label=debian-9-amd64"],
+	["Linux Intel64 FullAOT",    "test-mono-mainline-fullaot/label=debian-9-amd64", "test-mono-pull-request-amd64-fullaot"],
+	["Linux ARM64 FullAOT",      "test-mono-mainline-fullaot/label=debian-9-arm64"],
+	["Linux ARM32-hf FullAOT",   "test-mono-mainline-fullaot/label=debian-9-armhf"],
+	["Linux ARM32-el FullAOT",   "test-mono-mainline-fullaot/label=debian-9-armel"],
+	["Linux Intel64 HybridAOT",  "test-mono-mainline-hybridaot/label=debian-9-amd64"],
+	["Linux Intel64 Bitcode",    "test-mono-mainline-bitcode/label=debian-9-amd64"]
 ]
 
 // Lanes visible in "Build Logs (Special Configurations)" but omitted from status page
 let jenkinsLaneSpecsPlusValgrind = [
-	["Linux Intel64 Bitcode Valgrind", "test-mono-mainline-bitcode-valgrind/label=ubuntu-1404-amd64"]
+	["Linux Intel64 Bitcode Valgrind", "test-mono-mainline-bitcode-valgrind/label=debian-9-amd64"]
 ]
 
 // Repo we expect our hashes to correspond to (any entry acceptable)
