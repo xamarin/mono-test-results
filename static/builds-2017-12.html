@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en" data-framework="typescript">
+	<head>
+		<meta charset="utf-8">
+		<title>Mono CI results, 2017-12 branch</title>
+		<link rel="stylesheet" type="text/css" href="style.css" />
+		<link rel="stylesheet" type="text/css" href="bootstrap.min.css" />
+	</head>
+	<body>
+		<div id="content"></div>
+		<script type="text/javascript">
+			try { (new Image()).src = "images/reload.png" } catch (e) {}
+			module = {}
+			overloadAllowPR = false
+			overloadLaneContents = [
+				["Mac Intel64",
+					"o/label=osx-amd64"
+				],
+				["Mac Intel32",
+					"o/label=osx-i386"
+				],
+				["Linux Intel64",
+					"test-mono-mainline-2017-12/label=debian-9-amd64",
+				],
+				["Linux Intel32",
+					"test-mono-mainline-2017-12/label=debian-9-i386",
+				],
+				["Linux ARM64",
+					"test-mono-mainline-2017-12/label=debian-9-arm64",
+				],
+				["Linux ARM32-hf",
+					"test-mono-mainline-2017-12/label=debian-9-armhf",
+				],
+				["Linux ARM32-el",
+					"test-mono-mainline-2017-12/label=debian-9-armel",
+				],
+				["Windows Intel32",
+					"o/label=w32"
+				],
+				["Windows Intel64",
+					"o/label=w64"
+				]
+			]
+		</script>
+		<script type="text/javascript" src="js/breakout.js"></script>
+		<script type="text/javascript" src="js/jquery.js"></script>
+		<script type="text/javascript" src="js/react.js"></script>
+		<script type="text/javascript" src="js/react-dom.js"></script>
+		<script type="text/javascript" src="js/lz.js"></script>
+		<script type="text/javascript" src="js/priorityqueue.js"></script>
+		<script type="text/javascript" src="js/helper.js"></script>
+		<script type="text/javascript" src="js/helper-react.js"></script>
+		<script type="text/javascript" src="js/test-download.js"></script>
+		<script type="text/javascript" src="js/test-results.js"></script>
+		<script type="text/javascript" src="bootstrap.min.js"></script>
+	</body>
+</html>

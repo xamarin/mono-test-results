@@ -328,7 +328,9 @@ let titleBarSpec = [
 	["builds-plus.html", "Build logs (Special configurations)"],
 	["builds-stress.html", "Stress test"],
 	["builds-profiler.html", "Profiler stress tests"],
-	["builds-2017-10.html", "2017-10"],
+	["builds-2018-04.html", "2018-04"],
+	["builds-2018-02.html", "2018-02"],
+	["builds-2017-12.html", "2017-12"],
 	// ["https://jenkins.mono-project.com/view/All/job/jenkins-testresult-viewer/", "Source"]
 ]
 
