@@ -76,15 +76,16 @@ class BuildStatus extends React.Component<BuildStatusProps, {}> {
 			// Set icon for lane entry (via CSS class)
 			switch(build.result) {
 				case "UNSTABLE":
-					className = "warning"
+					className = "warning list-group-item"
 					break
 				case "SUCCESS":
-					className = "ok"
+					className = "ok list-group-item"
 					break
 				case null:
+					className = "list-group-item"
 					break
 				default:
-					className = "failure"
+					className = "failure list-group-item"
 					break
 			}
 
@@ -101,7 +102,7 @@ class BuildStatus extends React.Component<BuildStatusProps, {}> {
 
 		return <div className="buildStatusList">
 			{buildLink}
-			<ul>{displayList}</ul>
+			<ul className="list-group">{displayList}</ul>
 		</div>
 	}
 }

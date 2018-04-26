@@ -729,7 +729,7 @@ class FailureFilterLink extends React.Component<FailureFilterLinkProps, {}> {
 function renderFailureBase(failure: Failure, extra:JSX.Element=null) {
 	let testLine = failure.test ? <div className="failedTestName">{failure.test}</div> : null
 	let key = failure.step + "!" + failure.test
-	return <li key={key} className="failure">
+	return <li key={key} className="failure list-group-item">
 		<div>
 			{failureDescribe(failure.kind)} while running <span className="invocation">{failure.step}</span>
 		</div>
@@ -901,7 +901,7 @@ class PrBuildDisplay extends ExpandableWithFailures<PrBuildDisplayProps, string>
 	render() {
 		let prFailuresSortedKeys = this.props.prBuildListing.sortedKeys()
 		let prFailureDisplay = this.listRender(prFailuresSortedKeys)
-		return <ul>
+		return <ul className="list-group">
 			{prFailureDisplay}
 		</ul>
 	}
@@ -1044,7 +1044,7 @@ class PrDisplay extends Expandable<PrDisplayProps, string> {
 				label = "No test failures!"
 
 			result = <div className="prTestFailures">
-				<ul className="fakeTestFailuresList"><li className="ok"><b>{label}</b></li></ul>
+				<ul className="fakeTestFailuresList list-group"><li className="ok list-group-item"><b>{label}</b></li></ul>
 			</div>
 		}
 
@@ -1261,7 +1261,7 @@ let ContentArea = React.createClass({
 								  </div>
 								: <div className="invocation">{failure.step}</div>
 
-							return <li className="failure" key={key}>
+							return <li className="failure list-group-item" key={key}>
 								{title}
 								<b>{failureListing.count}</b> failure{failureListing.count>1?"s":""}{" "}
 								(failed on <FailureFilterLink count={countKeys(failureListing.lanes)}
@@ -1275,7 +1275,7 @@ let ContentArea = React.createClass({
 					// Render pane
 					return <div>
 						<p>Showing {formatRange(dateRange)} | Out of <b>{trials}</b> runs:</p>
-						<ul className="failureList">
+						<ul className="list-group">
 							{failureDisplay}
 						</ul>
 					</div>

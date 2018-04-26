@@ -56,10 +56,9 @@ li.ok {
 	background: url('images/ok.png') no-repeat left top;
 }
 li.failure, li.warning, li.ok {
-	list-style-type: none;
-	margin-left:-20px;
-	padding-left: 20px;
+	padding-left: 30px;
 	background-size: 16px 16px;
+	background-position: 5px 10px;
 }
 
 li.failureExpand, li.prExpand {
@@ -73,10 +72,6 @@ li.failureExpand {
 
 li.failureExpand a {
 	color:#CC0000;
-}
-
-.prTestFailures li.failure, .verbosePr {
-	margin-bottom:1.12em;
 }
 
 .invocation {
