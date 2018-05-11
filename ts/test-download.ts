@@ -180,19 +180,19 @@ let jenkinsLaneSpecs = [ // Name, Regular Jenkins job, PR Jenkins job
 let jenkinsLaneSpecsPlus = [
 	["Linux Intel64 MCS",        "test-mono-mainline-mcs/label=debian-9-amd64",     "test-mono-pull-request-amd64-mcs"],
 	["Linux Intel64 Checked",    "test-mono-mainline-checked/label=debian-9-amd64"],
-	["Linux Intel32 Coop",       "test-mono-mainline-coop/label=debian-9-i386"],
-	["Linux Intel64 Coop",       "test-mono-mainline-coop/label=debian-9-amd64"],
-	["Linux Intel64 FullAOT",    "test-mono-mainline-fullaot/label=debian-9-amd64", "test-mono-pull-request-amd64-fullaot"],
-	["Linux ARM64 FullAOT",      "test-mono-mainline-fullaot/label=debian-9-arm64"],
-	["Linux ARM32-hf FullAOT",   "test-mono-mainline-fullaot/label=debian-9-armhf"],
-	["Linux ARM32-el FullAOT",   "test-mono-mainline-fullaot/label=debian-9-armel"],
-	["Linux Intel64 HybridAOT",  "test-mono-mainline-hybridaot/label=debian-9-amd64"],
-	["Linux Intel64 Bitcode",    "test-mono-mainline-bitcode/label=debian-9-amd64"]
+	["Linux Intel32 Coop",       "test-mono-mainline-linux-coop-suspend/label=debian-9-i386"],
+	["Linux Intel64 Coop",       "test-mono-mainline-linux-coop-suspend/label=debian-9-amd64"],
+	["Linux Intel64 FullAOT",    "test-mono-mainline-linux-fullaot/label=debian-9-amd64", "test-mono-pull-request-amd64-fullaot"],
+	["Linux ARM64 FullAOT",      "test-mono-mainline-linux-fullaot/label=debian-9-arm64"],
+	["Linux ARM32-hf FullAOT",   "test-mono-mainline-linux-fullaot/label=debian-9-armhf"],
+	["Linux ARM32-el FullAOT",   "test-mono-mainline-linux-fullaot/label=debian-9-armel"],
+	["Linux Intel64 HybridAOT",  "test-mono-mainline-linux-hybridaot/label=debian-9-amd64"],
+	["Linux Intel64 Bitcode",    "test-mono-mainline-linux-bitcode/label=debian-9-amd64"]
 ]
 
 // Lanes visible in "Build Logs (Special Configurations)" but omitted from status page
 let jenkinsLaneSpecsPlusValgrind = [
-	["Linux Intel64 Bitcode Valgrind", "test-mono-mainline-bitcode-valgrind/label=debian-9-amd64"]
+	["Linux Intel64 Bitcode Valgrind", "test-mono-mainline-linux-bitcode-valgrind/label=debian-9-amd64"]
 ]
 
 // Repo we expect our hashes to correspond to (any entry acceptable)
