@@ -218,7 +218,7 @@ class ChoiceGroupBy extends Choice<GroupBy> {}
 let groupBy = new HashRef("groupBy", GroupBy, GroupBy.Lanes)
 
 class ChoiceDisplaySpan extends Choice<DisplaySpan> {}
-let displaySpan = new HashRef("span", DisplaySpan, DisplaySpan.Last48Hr)
+let displaySpan = new HashRef("span", DisplaySpan, DisplaySpan.Last14Days)
 
 let testFilterStep = new HashRef<string>("filterTestStep", null, null)
 let testFilterTest = new HashRef<string>("filterTestCase", null, null)

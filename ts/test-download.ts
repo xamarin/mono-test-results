@@ -8,10 +8,10 @@
 // Constants
 
 const defaultMaxBuildQueries = 50
-const maxCacheSize = 5000000 - 1024 // Limit 10 MB minus some headroom
+const maxCacheSize = 5000000 - 1024 // Limit 50 MB minus some headroom
 const cachePrefix = "cache!"
 
-const localStorageVersion = "1"
+const localStorageVersion = "2"
 const localStorageCompressMode = "LZString"
 
 // May be overloaded in HTML file
