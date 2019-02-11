@@ -187,7 +187,13 @@ let jenkinsLaneSpecsPlus = [
 	["Linux armhf FullAOT",   "test-mono-mainline-linux-fullaot/label=debian-9-armhf"],
 	["Linux armel FullAOT",   "test-mono-mainline-linux-fullaot/label=debian-9-armel"],
 	["Linux amd64 HybridAOT",  "test-mono-mainline-linux-hybridaot/label=debian-9-amd64"],
-	["Linux amd64 Bitcode",    "test-mono-mainline-linux-bitcode/label=debian-9-amd64"]
+	["Linux amd64 Bitcode",    "test-mono-mainline-linux-bitcode/label=debian-9-amd64"],
+	["Linux amd64 Interpreter", "test-mono-interpreter/label=debian-9-amd64", "test-mono-pull-request-interpreter"],
+	["Linux arm64 Interpreter", "test-mono-interpreter/label=debian-9-arm64", "test-mono-pull-request-interpreter-aarch64"],
+	["Linux amd64 FullAOT+Interpreter", "test-mono-fullaot+interpreter/label=debian-9-amd64", "test-mono-pull-request-fullaot+interpreter"],
+	["Linux arm64 FullAOT+Interpreter", "test-mono-fullaot+interpreter/label=debian-9-arm64", "test-mono-pull-request-arm64-fullaot+interpreter"],
+	["Linux amd64 FullAOT+Interpreter+LLVM", "test-mono-mainline-linux-fullaot+interpreter+llvm/label=debian-9-amd64", "test-mono-pull-request-fullaot+interpreter+llvm"],
+	["Linux arm64 FullAOT+Interpreter+LLVM", "test-mono-mainline-linux-fullaot+interpreter+llvm/label=debian-9-arm64", "test-mono-pull-request-arm64-fullaot+interpreter+llvm"]
 ]
 
 // Lanes visible in "Build Logs (Special Configurations)" but omitted from status page
